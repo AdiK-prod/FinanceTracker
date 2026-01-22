@@ -1,6 +1,16 @@
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { PieChart } from 'lucide-react'
 
-const COLORS = ['#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#EF4444', '#6366F1']
+const COLORS = [
+  'rgba(20, 184, 166, 0.9)',
+  'rgba(99, 102, 241, 0.85)',
+  'rgba(14, 165, 233, 0.8)',
+  'rgba(245, 158, 11, 0.85)',
+  'rgba(16, 185, 129, 0.85)',
+  'rgba(239, 68, 68, 0.85)',
+  'rgba(139, 92, 246, 0.85)',
+  'rgba(236, 72, 153, 0.85)',
+]
 
 const PieChartComponent = ({ data, selectedCategory, onCategoryClick }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0)
@@ -21,9 +31,17 @@ const PieChartComponent = ({ data, selectedCategory, onCategoryClick }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Spending by Category</h3>
-      <ResponsiveContainer width="100%" height={400}>
+    <div className="card card-hover">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50">
+          <PieChart size={24} className="text-teal-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">Spending Breakdown</p>
+          <h3 className="text-xl font-semibold text-gray-900">By Category</h3>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={420}>
         <RechartsPieChart>
           <Pie
             data={data}
@@ -40,7 +58,9 @@ const PieChartComponent = ({ data, selectedCategory, onCategoryClick }) => {
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={selectedCategory === entry.name ? COLORS[index % COLORS.length] : COLORS[index % COLORS.length]}
+                fill={COLORS[index % COLORS.length]}
+                stroke="#FFFFFF"
+                strokeWidth={1}
                 opacity={selectedCategory && selectedCategory !== entry.name ? 0.4 : 1}
               />
             ))}

@@ -1,22 +1,31 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
-import Upload from './pages/Upload'
+import ProtectedRoute from './components/ProtectedRoute'
 import Tagging from './pages/Tagging'
 import Dashboard from './pages/Dashboard'
 import Detailed from './pages/Detailed'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
 
 function App() {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Navigate to="/upload" replace />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/tagging" element={<Tagging />} />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route
+          element={(
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          )}
+        >
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tagging" element={<Tagging />} />
           <Route path="/detailed" element={<Detailed />} />
-        </Routes>
-      </Layout>
+        </Route>
+      </Routes>
     </Router>
   )
 }

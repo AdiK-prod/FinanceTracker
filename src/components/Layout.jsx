@@ -1,13 +1,13 @@
-import { Link, useLocation } from 'react-router-dom'
-import { Upload, Tag, PieChart, Filter } from 'lucide-react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Tag, PieChart, Filter } from 'lucide-react'
+import UserMenu from './UserMenu'
 
 const Layout = ({ children }) => {
   const location = useLocation()
 
   const navItems = [
-    { path: '/upload', label: 'Upload', icon: Upload },
-    { path: '/tagging', label: 'Tagging', icon: Tag },
     { path: '/dashboard', label: 'Dashboard', icon: PieChart },
+    { path: '/tagging', label: 'Tagging', icon: Tag },
     { path: '/detailed', label: 'Detailed', icon: Filter },
   ]
 
@@ -16,11 +16,11 @@ const Layout = ({ children }) => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Fixed Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-72 bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">Finance Tracker</h1>
-          <p className="text-sm text-gray-500 mt-1">Household Spending</p>
+        <div className="p-6 border-b border-white/10">
+          <h1 className="text-2xl font-bold text-white">Finance Tracker</h1>
+          <p className="text-sm text-gray-300 mt-1">Household Spending</p>
         </div>
 
         {/* Navigation */}
@@ -33,14 +33,14 @@ const Layout = ({ children }) => {
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center gap-3 px-4 py-2 rounded-md transition-all duration-200 ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-300 ease-in-out ${
                       active
-                        ? 'bg-teal text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-teal text-white shadow-sm'
+                        : 'text-gray-200 hover:bg-white/10'
                     }`}
                   >
-                    <Icon size={20} />
-                    <span className="font-medium">{item.label}</span>
+                    <Icon size={24} />
+                    <span className="font-medium text-base">{item.label}</span>
                   </Link>
                 </li>
               )
@@ -50,9 +50,12 @@ const Layout = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-8">
-          {children}
+      <main className="flex-1 overflow-y-auto bg-gray-50 bg-[radial-gradient(circle_at_1px_1px,#e5e7eb_1px,transparent_0)] [background-size:24px_24px]">
+        <div className="max-w-7xl mx-auto p-8 page-fade">
+          <div className="flex justify-end mb-6">
+            <UserMenu />
+          </div>
+          {children || <Outlet />}
         </div>
       </main>
     </div>

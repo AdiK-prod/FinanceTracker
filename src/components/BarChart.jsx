@@ -1,4 +1,5 @@
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart3 } from 'lucide-react'
 
 const BarChartComponent = ({ data }) => {
   const CustomTooltip = ({ active, payload }) => {
@@ -15,9 +16,17 @@ const BarChartComponent = ({ data }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Sub-Category Breakdown</h3>
-      <ResponsiveContainer width="100%" height={300}>
+    <div className="card card-hover">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50">
+          <BarChart3 size={24} className="text-teal-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">Drill-Down</p>
+          <h3 className="text-xl font-semibold text-gray-900">Sub-Category Breakdown</h3>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={360}>
         <RechartsBarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis
@@ -31,7 +40,7 @@ const BarChartComponent = ({ data }) => {
             tickFormatter={(value) => `$${value}`}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="value" fill="#14B8A6" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" fill="rgba(99, 102, 241, 0.8)" radius={[6, 6, 0, 0]} />
         </RechartsBarChart>
       </ResponsiveContainer>
     </div>
