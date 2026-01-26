@@ -15,6 +15,9 @@ const COLORS = [
 const PieChartComponent = ({ data, selectedCategory, onCategoryClick }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
+  const formatAmount = (amount) =>
+    `₪${amount.toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0]
@@ -22,7 +25,7 @@ const PieChartComponent = ({ data, selectedCategory, onCategoryClick }) => {
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-semibold text-gray-900">{data.name}</p>
-          <p className="text-teal font-medium">${data.value.toFixed(2)}</p>
+          <p className="text-teal font-medium">{formatAmount(data.value)}</p>
           <p className="text-sm text-gray-500">{percentage}% of total</p>
         </div>
       )

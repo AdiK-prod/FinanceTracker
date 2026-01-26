@@ -2,13 +2,16 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 import { BarChart3 } from 'lucide-react'
 
 const BarChartComponent = ({ data }) => {
+  const formatAmount = (amount) =>
+    `₪${amount.toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0]
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-semibold text-gray-900">{data.name}</p>
-          <p className="text-teal font-medium">${data.value.toFixed(2)}</p>
+          <p className="text-teal font-medium">{formatAmount(data.value)}</p>
         </div>
       )
     }

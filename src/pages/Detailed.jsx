@@ -1,266 +1,756 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Download, Search, Filter } from 'lucide-react'
-import BarChartComponent from '../components/BarChart'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import {
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts'
+import { BarChart3, Download, LineChart as LineChartIcon, PieChart as PieChartIcon, Filter, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import DateRangePicker from '../components/DateRangePicker'
+import { formatDateDisplay, formatDateRangeDisplay, formatMonthYear, formatDateForDB } from '../utils/dateFormatters'
+
+const CHART_COLORS = [
+  '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4',
+  '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a',
+  '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe',
+  '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+]
 
 const Detailed = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const selectedCategory = location.state?.category || 'Groceries'
-
-  const [searchQuery, setSearchQuery] = useState('')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
-  const [amountRange, setAmountRange] = useState({ min: 0, max: 1000 })
+  const { user } = useAuth()
   const [expenses, setExpenses] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
+  
+  // Debounce ref for fetch
+  const fetchTimeoutRef = useRef(null)
+
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date()
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1),
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+    }
+  })
+
+  const [filters, setFilters] = useState({
+    minAmount: '',
+    maxAmount: '',
+    includeExceptional: true,
+    merchant: '',
+  })
+
+  const [selectedMainCategories, setSelectedMainCategories] = useState([])
+  const [selectedSubCategories, setSelectedSubCategories] = useState([])
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false)
+
+  const [groupBy, setGroupBy] = useState('main_category')
+  const [chartType, setChartType] = useState('pie')
+  const [showPercentages, setShowPercentages] = useState(true)
+  const [categories, setCategories] = useState({ mains: [], subs: {} })
 
   useEffect(() => {
-    const fetchExpenses = async () => {
-      setIsLoading(true)
-      setError('')
+    const fetchCategories = async () => {
+      if (!user) return
       const { data, error: fetchError } = await supabase
-        .from('expenses')
-        .select('id, transaction_date, merchant, amount, main_category, sub_category, profiles(full_name, email)')
-        .eq('main_category', selectedCategory)
-        .order('transaction_date', { ascending: false })
+        .from('expense_categories')
+        .select('main_category, sub_category')
+        .eq('user_id', user.id)
+        .order('main_category', { ascending: true })
+        .order('sub_category', { ascending: true })
 
       if (fetchError) {
         setError(fetchError.message)
-        setExpenses([])
-      } else {
-        setExpenses(data || [])
+        return
       }
-      setIsLoading(false)
+
+      const mains = Array.from(new Set((data || []).map((row) => row.main_category)))
+      const subs = (data || []).reduce((acc, row) => {
+        if (!row.sub_category) return acc
+        if (!acc[row.main_category]) acc[row.main_category] = []
+        acc[row.main_category].push(row.sub_category)
+        return acc
+      }, {})
+
+      setCategories({ mains, subs })
     }
 
-    fetchExpenses()
-  }, [selectedCategory])
+    fetchCategories()
+  }, [user])
 
-  // Group by sub-category for bar chart
-  const subCategoryData = useMemo(() => {
-    const grouped = {}
-    expenses.forEach(exp => {
-      const subCat = exp.sub_category || 'Uncategorized'
-      grouped[subCat] = (grouped[subCat] || 0) + exp.amount
+  // Initialize all categories as selected
+  useEffect(() => {
+    if (categories.mains.length > 0 && selectedMainCategories.length === 0) {
+      setSelectedMainCategories(categories.mains)
+      const allSubs = Object.values(categories.subs).flat()
+      setSelectedSubCategories(allSubs)
+    }
+  }, [categories, selectedMainCategories.length])
+
+  useEffect(() => {
+    // Clear existing timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current)
+    }
+    
+    // Set new timeout (300ms delay for debouncing)
+    fetchTimeoutRef.current = setTimeout(() => {
+      fetchExpenses()
+    }, 300)
+    
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current)
+      }
+    }
+  }, [user, dateRange, filters, selectedMainCategories, selectedSubCategories, categories])
+
+  const fetchExpenses = async () => {
+    if (!user) return
+    if (categories.mains.length === 0) return // Wait for categories to load
+    
+    // Don't show full loading state if already have data - use subtle refresh instead
+    if (expenses.length > 0) {
+      setIsRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+    setError('')
+
+    let query = supabase
+      .from('expenses')
+      .select('*')
+      .eq('user_id', user.id)
+
+    if (dateRange?.from) {
+      query = query.gte('transaction_date', formatDateForDB(dateRange.from))
+    }
+    if (dateRange?.to) {
+      query = query.lte('transaction_date', formatDateForDB(dateRange.to))
+    }
+
+    // Only apply category filter if not all categories selected
+    const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
+    
+    if (!allCategoriesSelected && selectedMainCategories.length > 0) {
+      query = query.in('main_category', selectedMainCategories)
+    } else if (selectedMainCategories.length === 0) {
+      // No categories selected = show nothing
+      setExpenses([])
+      setLoading(false)
+      setIsRefreshing(false)
+      return
+    }
+
+    if (filters.minAmount) {
+      query = query.gte('amount', parseFloat(filters.minAmount))
+    }
+    if (filters.maxAmount) {
+      query = query.lte('amount', parseFloat(filters.maxAmount))
+    }
+    if (!filters.includeExceptional) {
+      query = query.eq('is_exceptional', false)
+    }
+    if (filters.merchant) {
+      query = query.ilike('merchant', `%${filters.merchant}%`)
+    }
+
+    const { data, error: fetchError } = await query.order('transaction_date', { ascending: false })
+
+    if (fetchError) {
+      setError(fetchError.message)
+      setExpenses([])
+      setLoading(false)
+      setIsRefreshing(false)
+      return
+    }
+
+    // Client-side filter by sub-categories (more flexible than SQL)
+    let filtered = data || []
+
+    if (selectedSubCategories.length > 0) {
+      const allPossibleSubs = Object.values(categories.subs).flat()
+      if (selectedSubCategories.length < allPossibleSubs.length) {
+        filtered = filtered.filter((exp) =>
+          !exp.sub_category || selectedSubCategories.includes(exp.sub_category)
+        )
+      }
+    }
+
+    setExpenses(filtered)
+    setLoading(false)
+    setIsRefreshing(false)
+  }
+
+  const formatAmount = (amount) =>
+    `₪${Number(amount || 0).toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
+
+  const toggleMainCategory = (category) => {
+    setSelectedMainCategories((prev) => {
+      if (prev.includes(category)) {
+        // Deselect main category and all its subs
+        const subsToRemove = categories.subs[category] || []
+        setSelectedSubCategories((prevSubs) =>
+          prevSubs.filter((sub) => !subsToRemove.includes(sub))
+        )
+        return prev.filter((c) => c !== category)
+      } else {
+        // Select main category and all its subs
+        const subsToAdd = categories.subs[category] || []
+        setSelectedSubCategories((prevSubs) =>
+          [...new Set([...prevSubs, ...subsToAdd])]
+        )
+        return [...prev, category]
+      }
     })
-    return Object.entries(grouped)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-  }, [expenses])
+  }
 
-  // Filter transactions based on search, date range, and amount range
-  const filteredTransactions = useMemo(() => {
-    let filtered = [...expenses]
+  const toggleSubCategory = (subCategory) => {
+    setSelectedSubCategories((prev) => {
+      if (prev.includes(subCategory)) {
+        return prev.filter((s) => s !== subCategory)
+      } else {
+        return [...prev, subCategory]
+      }
+    })
+  }
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(exp =>
-        exp.merchant.toLowerCase().includes(searchQuery.toLowerCase())
+  const selectAllCategories = () => {
+    setSelectedMainCategories(categories.mains)
+    const allSubs = Object.values(categories.subs).flat()
+    setSelectedSubCategories(allSubs)
+  }
+
+  const deselectAllCategories = () => {
+    setSelectedMainCategories([])
+    setSelectedSubCategories([])
+  }
+
+  const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
+
+  const totalSpending = useMemo(
+    () => expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0),
+    [expenses]
+  )
+
+  const averageExpense = useMemo(
+    () => (expenses.length > 0 ? totalSpending / expenses.length : 0),
+    [expenses, totalSpending]
+  )
+
+  const aggregatedData = useMemo(() => {
+    if (!expenses.length) return []
+    const grouped = {}
+
+    expenses.forEach((expense) => {
+      let key = 'Other'
+      let label = 'Other'
+
+      switch (groupBy) {
+        case 'main_category':
+          key = expense.main_category || 'Uncategorized'
+          label = key
+          break
+        case 'sub_category':
+          key = expense.sub_category || 'Uncategorized'
+          label = key
+          break
+        case 'merchant':
+          key = expense.merchant
+          label = key
+          break
+        case 'date': {
+          const date = new Date(`${expense.transaction_date}T00:00:00`)
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          label = formatMonthYear(date)
+          break
+        }
+        default:
+          break
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          name: label,
+          total: 0,
+          count: 0,
+        }
+      }
+
+      grouped[key].total += expense.amount || 0
+      grouped[key].count += 1
+    })
+
+    return Object.values(grouped)
+      .sort((a, b) => b.total - a.total)
+      .map((item) => ({
+        ...item,
+        total: Math.round(item.total * 100) / 100,
+        percentage: totalSpending ? Math.round((item.total / totalSpending) * 100) : 0,
+      }))
+  }, [expenses, groupBy, totalSpending])
+
+  const exportToCSV = () => {
+    const headers = ['Date', 'Merchant', 'Amount', 'Main Category', 'Sub Category', 'Notes', 'Exceptional']
+    const rows = expenses.map((exp) => [
+      formatDateDisplay(exp.transaction_date),
+      exp.merchant,
+      exp.amount,
+      exp.main_category || '',
+      exp.sub_category || '',
+      exp.notes || '',
+      exp.is_exceptional ? 'Yes' : 'No',
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `expenses_${formatDateDisplay(dateRange.from)}_to_${formatDateDisplay(dateRange.to)}.csv`
+    link.click()
+  }
+
+  const renderChart = () => {
+    if (aggregatedData.length === 0) {
+      return (
+        <div className="h-96 flex items-center justify-center text-gray-500">
+          <div className="text-center">
+            <PieChartIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-lg font-medium">No data to display</p>
+            <p className="text-sm">Try adjusting your filters</p>
+          </div>
+        </div>
       )
     }
 
-    // Date range filter
-    if (dateRange.start) {
-      filtered = filtered.filter(exp => new Date(exp.transaction_date) >= new Date(dateRange.start))
+    switch (chartType) {
+      case 'pie':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <PieChart>
+              <Pie
+                data={aggregatedData}
+                dataKey="total"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={150}
+                label={({ name, percentage }) => (showPercentages ? `${name}: ${percentage}%` : name)}
+              >
+                {aggregatedData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => formatAmount(value)} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        )
+      case 'bar':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={aggregatedData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <YAxis />
+              <Tooltip formatter={(value) => formatAmount(value)} />
+              <Legend />
+              <Bar dataKey="total" fill="#0d9488" name="Total Spending" />
+            </BarChart>
+          </ResponsiveContainer>
+        )
+      case 'line':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={aggregatedData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <YAxis />
+              <Tooltip formatter={(value) => formatAmount(value)} />
+              <Legend />
+              <Line type="monotone" dataKey="total" stroke="#0d9488" strokeWidth={2} name="Total Spending" />
+            </LineChart>
+          </ResponsiveContainer>
+        )
+      default:
+        return null
     }
-    if (dateRange.end) {
-      filtered = filtered.filter(exp => new Date(exp.transaction_date) <= new Date(dateRange.end))
-    }
+  }
 
-    // Amount range filter
-    filtered = filtered.filter(exp =>
-      exp.amount >= amountRange.min && exp.amount <= amountRange.max
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-gray-600">Loading reports...</div>
+      </div>
     )
-
-    // Sort by date (most recent first)
-    return filtered.sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
-  }, [expenses, searchQuery, dateRange, amountRange])
-
-  const totalAmount = useMemo(() => {
-    return filteredTransactions.reduce((sum, exp) => sum + exp.amount, 0)
-  }, [filteredTransactions])
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-md transition-all duration-300 ease-in-out"
-          >
-            <ArrowLeft size={20} className="text-gray-700" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{selectedCategory}</h1>
-            <p className="text-sm font-medium text-gray-600 mt-1">
-              {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''} • ${totalAmount.toFixed(2)} total
-            </p>
-          </div>
+    <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+      {/* Subtle refreshing indicator */}
+      {isRefreshing && (
+        <div className="fixed top-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-fade-in">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-medium">Updating...</span>
         </div>
-        <button
-          onClick={(e) => e.preventDefault()}
-          className="btn-secondary flex items-center gap-2"
-        >
-          <Download size={24} />
-          Export CSV
-        </button>
-      </div>
-
-      {/* Bar Chart */}
-      {isLoading ? (
-        <div className="card animate-pulse h-[360px]" />
-      ) : (
-        <BarChartComponent data={subCategoryData} />
       )}
-
-      {/* Filters */}
-      <div className="card card-hover">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50">
-            <Filter size={24} className="text-teal-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Refine Results</p>
-            <h3 className="text-xl font-semibold text-gray-900">Filters</h3>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              Search Merchant
-            </label>
-            <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search transactions..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Date Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        {/* Amount Range Slider */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-600 mb-2">
-            Amount Range: ${amountRange.min} - ${amountRange.max}
-          </label>
-          <div className="flex gap-4 items-center">
-            <input
-              type="range"
-              min="0"
-              max="1000"
-              step="10"
-              value={amountRange.max}
-              onChange={(e) => setAmountRange({ ...amountRange, max: parseInt(e.target.value) })}
-              className="flex-1 accent-teal"
-            />
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={amountRange.min}
-                onChange={(e) => setAmountRange({ ...amountRange, min: parseInt(e.target.value) || 0 })}
-                className="w-24 px-3 py-1 border border-gray-300 rounded-md text-sm"
-                placeholder="Min"
-              />
-              <input
-                type="number"
-                value={amountRange.max}
-                onChange={(e) => setAmountRange({ ...amountRange, max: parseInt(e.target.value) || 1000 })}
-                className="w-24 px-3 py-1 border border-gray-300 rounded-md text-sm"
-                placeholder="Max"
-              />
-            </div>
-          </div>
-        </div>
+      
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Detailed Reports</h1>
+        <p className="text-gray-600 mt-1">Advanced analytics and breakdowns</p>
       </div>
 
-      {/* Transaction List */}
-      <div className="card card-hover overflow-hidden p-0">
-        <div className="px-6 py-4 border-b border-gray-200 bg-white">
-          <h3 className="text-xl font-semibold text-gray-900">All Transactions</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+                !allCategoriesSelected
+                  ? 'border-teal bg-teal-50 text-teal'
+                  : 'border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">Categories</span>
+              {!allCategoriesSelected && (
+                <span className="px-2 py-0.5 bg-teal text-white text-xs rounded-full">
+                  {selectedMainCategories.length}/{categories.mains.length}
+                </span>
+              )}
+              <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
+            </button>
+
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+          </div>
         </div>
-        <div className="divide-y divide-gray-200">
-          {isLoading ? (
-            <div className="px-6 py-6">
-              <div className="h-6 w-full rounded bg-gray-100 animate-pulse" />
+
+        {/* Category Filter Panel */}
+        {showCategoryFilter && (
+          <div className="border-t border-gray-200 pt-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">Filter by Categories</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={selectAllCategories}
+                  className="text-xs text-teal hover:text-teal/80 font-medium"
+                >
+                  Select All
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  onClick={deselectAllCategories}
+                  className="text-xs text-gray-600 hover:text-gray-700 font-medium"
+                >
+                  Deselect All
+                </button>
+              </div>
             </div>
-          ) : filteredTransactions.length > 0 ? (
-            filteredTransactions.map((transaction, index) => {
-              const addedBy = transaction.profiles?.full_name || transaction.profiles?.email || 'Unknown'
-              return (
-              <div
-                key={transaction.id}
-                className={`px-6 py-4 transition-all duration-300 ease-in-out hover:bg-gray-50 ${
-                  index % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium text-gray-900">{transaction.merchant}</p>
-                      {transaction.sub_category && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                          {transaction.sub_category}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories.mains.map((mainCat) => {
+                const isMainSelected = selectedMainCategories.includes(mainCat)
+                const subs = categories.subs[mainCat] || []
+                const selectedSubsCount = subs.filter((sub) => selectedSubCategories.includes(sub)).length
+
+                return (
+                  <div
+                    key={mainCat}
+                    className={`border rounded-lg p-3 transition-all ${
+                      isMainSelected 
+                        ? 'border-teal-300 bg-teal-50/30' 
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                      <input
+                        type="checkbox"
+                        checked={isMainSelected}
+                        onChange={() => toggleMainCategory(mainCat)}
+                        className="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
+                      />
+                      <span className={`font-semibold flex-1 ${
+                        isMainSelected ? 'text-gray-900' : 'text-gray-400'
+                      }`}>
+                        {mainCat}
+                      </span>
+                      {subs.length > 0 && (
+                        <span className={`text-xs ${
+                          isMainSelected ? 'text-teal-600' : 'text-gray-400'
+                        }`}>
+                          {selectedSubsCount}/{subs.length}
                         </span>
                       )}
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(transaction.transaction_date).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Added by {addedBy}</p>
+                    </label>
+
+                    {/* ALWAYS SHOW SUB-CATEGORIES, even when main unchecked */}
+                    {subs.length > 0 && (
+                      <div className="ml-6 space-y-1 mt-2 pt-2 border-t border-gray-100">
+                        {subs.map((subCat) => {
+                          const isSubSelected = selectedSubCategories.includes(subCat)
+                          
+                          return (
+                            <label 
+                              key={subCat} 
+                              className={`flex items-center gap-2 cursor-pointer transition-opacity ${
+                                !isMainSelected ? 'opacity-40' : 'opacity-100'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSubSelected}
+                                onChange={() => toggleSubCategory(subCat)}
+                                disabled={!isMainSelected}
+                                className="w-3 h-3 text-teal border-gray-300 rounded focus:ring-teal disabled:cursor-not-allowed"
+                              />
+                              <span className={`text-sm ${
+                                isSubSelected && isMainSelected ? 'text-gray-700' : 'text-gray-400'
+                              }`}>
+                                {subCat}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">${transaction.amount.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-            )})
-          ) : (
-            <div className="px-6 py-12 text-center text-gray-500">
-              No transactions found matching your filters.
+                )
+              })}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Active Filter Banner */}
+        {!allCategoriesSelected && (
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-teal" />
+              <span className="text-sm text-teal-900">
+                Filtering by {selectedMainCategories.length} of {categories.mains.length} categories
+              </span>
+            </div>
+            <button
+              onClick={selectAllCategories}
+              className="text-sm text-teal hover:text-teal/80 underline"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+            <input
+              type="number"
+              value={filters.minAmount}
+              onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
+              placeholder="₪0"
+              className="w-full px-3 py-2 border rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+            <input
+              type="number"
+              value={filters.maxAmount}
+              onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
+              placeholder="₪1000"
+              className="w-full px-3 py-2 border rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Merchant Search</label>
+            <input
+              type="text"
+              value={filters.merchant}
+              onChange={(e) => setFilters({ ...filters, merchant: e.target.value })}
+              placeholder="Search merchant..."
+              className="w-full px-3 py-2 border rounded-lg"
+            />
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.includeExceptional}
+                onChange={(e) => setFilters({ ...filters, includeExceptional: e.target.checked })}
+                className="w-4 h-4 text-teal border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">Include exceptional</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">Group by:</span>
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value)}
+              className="px-3 py-1.5 border rounded-lg text-sm"
+            >
+              <option value="main_category">Main Category</option>
+              <option value="sub_category">Sub Category</option>
+              <option value="merchant">Merchant</option>
+              <option value="date">Month</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setChartType('pie')}
+              className={`p-2 rounded-lg transition-colors ${
+                chartType === 'pie' ? 'bg-teal-100 text-teal-700' : 'hover:bg-gray-100'
+              }`}
+              title="Pie Chart"
+            >
+              <PieChartIcon className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setChartType('bar')}
+              className={`p-2 rounded-lg transition-colors ${
+                chartType === 'bar' ? 'bg-teal-100 text-teal-700' : 'hover:bg-gray-100'
+              }`}
+              title="Bar Chart"
+            >
+              <BarChart3 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setChartType('line')}
+              className={`p-2 rounded-lg transition-colors ${
+                chartType === 'line' ? 'bg-teal-100 text-teal-700' : 'hover:bg-gray-100'
+              }`}
+              title="Line Chart"
+            >
+              <LineChartIcon className="w-5 h-5" />
+            </button>
+
+            <div className="ml-2 pl-2 border-l border-gray-300">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showPercentages}
+                  onChange={(e) => setShowPercentages(e.target.checked)}
+                  className="w-4 h-4 text-teal border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-700">Show %</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-1">Total Spending</div>
+          <div className="text-3xl font-bold text-gray-900">{formatAmount(totalSpending)}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {formatDateRangeDisplay(dateRange.from, dateRange.to)}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-1">Total Transactions</div>
+          <div className="text-3xl font-bold text-gray-900">{expenses.length}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {aggregatedData.length} unique {groupBy.replace('_', ' ')}s
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-sm text-gray-600 mb-1">Average Expense</div>
+          <div className="text-3xl font-bold text-gray-900">{formatAmount(averageExpense)}</div>
+          <div className="text-sm text-gray-500 mt-1">per transaction</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Spending by {groupBy.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+        </h2>
+        {renderChart()}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Detailed Breakdown</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                  {groupBy.replace('_', ' ')}
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                  Total
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                  % of Total
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">
+                  Count
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                  Average
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {aggregatedData.map((item, idx) => (
+                <tr key={`${item.name}-${idx}`} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.name}</td>
+                  <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
+                    {formatAmount(item.total)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-right text-gray-600">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-teal h-2 rounded-full"
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span>{item.percentage}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-center text-gray-600">{item.count}</td>
+                  <td className="px-6 py-4 text-sm text-right text-gray-600">
+                    {formatAmount(item.total / item.count)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {error && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700 mt-6">
           {error}
         </div>
       )}

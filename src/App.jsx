@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Tagging from './pages/Tagging'
 import Dashboard from './pages/Dashboard'
 import Detailed from './pages/Detailed'
+import CategoryManagement from './pages/CategoryManagement'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tagging" element={<Tagging />} />
           <Route path="/detailed" element={<Detailed />} />
+          <Route path="/categories" element={<CategoryManagement />} />
         </Route>
       </Routes>
     </Router>

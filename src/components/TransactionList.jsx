@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Receipt } from 'lucide-react'
+import { formatDateDisplay } from '../utils/dateFormatters'
 
 const TransactionList = ({ transactions, limit = 10, isLoading = false }) => {
   const navigate = useNavigate()
@@ -7,6 +8,9 @@ const TransactionList = ({ transactions, limit = 10, isLoading = false }) => {
   const handleTransactionClick = (transaction) => {
     navigate('/detailed', { state: { category: transaction.mainCategory } })
   }
+
+  const formatAmount = (amount) =>
+    `₪${amount.toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
 
   return (
     <div className="card card-hover overflow-hidden p-0">
@@ -47,15 +51,11 @@ const TransactionList = ({ transactions, limit = 10, isLoading = false }) => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      {new Date(transaction.transaction_date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
+                      {formatDateDisplay(transaction.transaction_date)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">${transaction.amount.toFixed(2)}</p>
+                    <p className="font-semibold text-gray-900">{formatAmount(transaction.amount)}</p>
                     {transaction.sub_category && (
                       <p className="text-xs text-gray-500">{transaction.sub_category}</p>
                     )}

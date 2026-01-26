@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Tag, PieChart, Filter } from 'lucide-react'
+import { Tag, PieChart, Filter, Tags } from 'lucide-react'
 import UserMenu from './UserMenu'
 
 const Layout = ({ children }) => {
@@ -9,6 +9,7 @@ const Layout = ({ children }) => {
     { path: '/dashboard', label: 'Dashboard', icon: PieChart },
     { path: '/tagging', label: 'Tagging', icon: Tag },
     { path: '/detailed', label: 'Detailed', icon: Filter },
+    { path: '/categories', label: 'Categories', icon: Tags },
   ]
 
   const isActive = (path) => location.pathname === path
