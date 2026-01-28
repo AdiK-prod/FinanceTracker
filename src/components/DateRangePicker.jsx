@@ -1,188 +1,244 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { DayPicker } from 'react-day-picker'
-import { Calendar, ChevronDown } from 'lucide-react'
+import { Calendar, ChevronDown, ChevronLeft, X } from 'lucide-react'
 import { formatDateRangeDisplay } from '../utils/dateFormatters'
 
-const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
-const endOfMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0)
-const addMonths = (date, months) => new Date(date.getFullYear(), date.getMonth() + months, 1)
-
-const DateRangePicker = ({ value, onChange, baseDate }) => {
+export default function DateRangePicker({ value, onChange, baseDate }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [showCalendar, setShowCalendar] = useState(false)
+  const [view, setView] = useState('presets') // 'presets' or 'custom'
+  const [tempRange, setTempRange] = useState(value)
   const dropdownRef = useRef(null)
-  const anchorDate = baseDate || new Date()
-  const now = new Date()
-
-  const presets = useMemo(() => [
-    {
-      label: 'This Month',
-      range: { from: startOfMonth(now), to: now },
-    },
-    {
-      label: 'Last Month',
-      range: { from: startOfMonth(addMonths(now, -1)), to: endOfMonth(addMonths(now, -1)) },
-    },
-    {
-      label: 'Last 3 Months',
-      range: { from: startOfMonth(addMonths(now, -2)), to: now },
-    },
-    {
-      label: 'Last 6 Months',
-      range: { from: startOfMonth(addMonths(now, -5)), to: now },
-    },
-    {
-      label: 'Custom Range',
-      range: null,
-    },
-  ], [now])
-
-  const rangeLabel = formatDateRangeDisplay(value?.from, value?.to)
-
-  const handlePresetClick = (preset) => {
-    if (preset.range) {
-      onChange(preset.range)
-      setIsOpen(false)
-      setShowCalendar(false)
-      return
-    }
-    setShowCalendar(true)
-  }
-
-  const handleRangeSelect = (range) => {
-    onChange(range)
-    if (range?.from && range?.to) {
-      setTimeout(() => setIsOpen(false), 300)
-    }
-  }
-
+  
   useEffect(() => {
-    const handleOutsideClick = (event) => {
+    function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false)
-        setShowCalendar(false)
+        setView('presets')
       }
     }
-    const handleEsc = (event) => {
+    
+    function handleEscape(event) {
       if (event.key === 'Escape') {
         setIsOpen(false)
-        setShowCalendar(false)
+        setView('presets')
       }
     }
-
+    
     if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick)
-      document.addEventListener('keydown', handleEsc)
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
     }
-
+    
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick)
-      document.removeEventListener('keydown', handleEsc)
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
-
+  
+  // Update temp range when selected range changes
+  useEffect(() => {
+    setTempRange(value)
+  }, [value])
+  
+  function getPresetRange(preset) {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const day = now.getDate()
+    
+    let from, to
+    
+    switch (preset) {
+      case 'thisMonth':
+        from = new Date(year, month, 1)
+        to = new Date(year, month, day)
+        break
+      case 'lastMonth':
+        from = new Date(year, month - 1, 1)
+        to = new Date(year, month, 0)
+        break
+      case 'last3Months':
+        from = new Date(year, month - 3, 1)
+        to = new Date(year, month, day)
+        break
+      case 'last6Months':
+        from = new Date(year, month - 6, 1)
+        to = new Date(year, month, day)
+        break
+      case 'yearToDate':
+        from = new Date(year, 0, 1)
+        to = new Date(year, month, day)
+        break
+      case 'lastYear':
+        from = new Date(year - 1, 0, 1)
+        to = new Date(year - 1, 11, 31)
+        break
+      case 'allTime':
+        from = new Date(2020, 0, 1)
+        to = new Date(year, month, day)
+        break
+      default:
+        from = new Date(year, month, 1)
+        to = new Date(year, month, day)
+    }
+    
+    return { from, to }
+  }
+  
+  function applyPreset(preset) {
+    const range = getPresetRange(preset)
+    onChange(range)
+    setIsOpen(false)
+    setView('presets')
+  }
+  
+  function handleCustomRangeSelect(range) {
+    if (range?.from) {
+      setTempRange(range)
+    }
+  }
+  
+  function applyCustomRange() {
+    if (tempRange?.from && tempRange?.to) {
+      onChange(tempRange)
+      setIsOpen(false)
+      setView('presets')
+    }
+  }
+  
+  function cancelCustomRange() {
+    setTempRange(value)
+    setView('presets')
+  }
+  
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* Trigger Button - Consistent Style */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-teal transition-colors"
+        onClick={() => {
+          setIsOpen(!isOpen)
+          setView('presets')
+        }}
+        className="flex items-center gap-2 px-4 py-2.5 border-2 border-gray-300 rounded-lg bg-white hover:border-teal-500 transition-colors font-medium shadow-sm"
       >
-        <Calendar size={20} className="text-gray-600" />
-        <span className="text-sm font-medium text-gray-700">{rangeLabel}</span>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Calendar className="w-5 h-5 text-teal-600" />
+        <span className="text-sm text-gray-900">
+          {formatDateRangeDisplay(value?.from, value?.to)}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-
+      
+      {/* Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-[100] overflow-hidden">
-          {/* Quick Presets - Show when calendar is NOT visible */}
-          {!showCalendar && (
-            <div className="p-3 min-w-[240px]">
-              <div className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+        <div className="absolute left-0 mt-2 bg-white rounded-xl shadow-2xl border-2 border-gray-200 z-[100] overflow-hidden">
+          
+          {view === 'presets' ? (
+            // PRESETS VIEW
+            <div className="p-4 min-w-[280px]">
+              <div className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">
                 Quick Select
               </div>
               <div className="space-y-1">
-                {presets.slice(0, -1).map((preset) => (
-                  <button
-                    key={preset.label}
-                    onClick={() => handlePresetClick(preset)}
-                    className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-teal-50 hover:text-teal rounded-md transition-colors"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
+                <PresetButton label="This Month" onClick={() => applyPreset('thisMonth')} icon="📅" />
+                <PresetButton label="Last Month" onClick={() => applyPreset('lastMonth')} icon="📆" />
+                <PresetButton label="Last 3 Months" onClick={() => applyPreset('last3Months')} icon="📊" />
+                <PresetButton label="Last 6 Months" onClick={() => applyPreset('last6Months')} icon="📈" />
+                <PresetButton label="Year to Date" onClick={() => applyPreset('yearToDate')} icon="🗓️" />
+                <PresetButton label="Last Year" onClick={() => applyPreset('lastYear')} icon="📅" />
+                <PresetButton label="All Time" onClick={() => applyPreset('allTime')} icon="♾️" />
               </div>
               
               {/* Custom Range Button */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => setShowCalendar(true)}
-                  className="w-full px-3 py-2 text-sm text-teal-600 hover:bg-teal-50 rounded-md transition-colors font-medium"
+                  onClick={() => setView('custom')}
+                  className="w-full px-4 py-2.5 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 transition-colors font-semibold flex items-center justify-center gap-2 border-2 border-teal-200"
                 >
-                  Custom Range →
+                  <Calendar className="w-4 h-4" />
+                  Pick Custom Dates
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Custom Calendar View - Show when user clicks Custom Range */}
-          {showCalendar && (
+          ) : (
+            // CUSTOM CALENDAR VIEW
             <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Custom Range
-                </div>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
                 <button
-                  onClick={() => setShowCalendar(false)}
-                  className="text-sm text-gray-600 hover:text-gray-800"
+                  onClick={cancelCustomRange}
+                  className="flex items-center gap-1 text-sm text-teal-600 hover:text-teal-700 font-semibold"
                 >
-                  ← Back
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
                 </button>
-              </div>
-              
-              <DayPicker
-                mode="range"
-                selected={value}
-                onSelect={handleRangeSelect}
-                numberOfMonths={1}
-                defaultMonth={value?.from || anchorDate}
-                classNames={{
-                  months: 'flex flex-col',
-                  month: 'space-y-4',
-                  caption: 'flex justify-center pt-1 relative items-center mb-4',
-                  caption_label: 'text-base font-bold text-gray-900',
-                  nav: 'space-x-1 flex items-center',
-                  nav_button: 'h-8 w-8 bg-white hover:bg-teal-50 rounded-md transition-colors border-2 border-gray-300 hover:border-teal-500',
-                  nav_button_previous: 'absolute left-1',
-                  nav_button_next: 'absolute right-1',
-                  table: 'w-full border-collapse',
-                  head_row: 'flex',
-                  head_cell: 'text-gray-900 font-bold rounded-md w-10 text-sm',
-                  row: 'flex w-full mt-2',
-                  cell: 'text-center text-sm p-0 relative',
-                  day: 'h-10 w-10 p-0 font-medium rounded-md hover:bg-teal-100 transition-colors text-gray-900 border border-transparent',
-                  day_selected: 'bg-teal-600 text-white hover:bg-teal-700 font-bold border-teal-700',
-                  day_today: 'bg-blue-100 text-blue-900 font-bold border-2 border-blue-600',
-                  day_outside: 'text-gray-300 opacity-40',
-                  day_disabled: 'text-gray-200 line-through opacity-40',
-                  day_range_middle: 'bg-teal-100 text-teal-900 border-teal-200',
-                  day_range_start: 'bg-teal-600 text-white rounded-l-md border-teal-700',
-                  day_range_end: 'bg-teal-600 text-white rounded-r-md border-teal-700',
-                }}
-              />
-              
-              <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
-                <button
-                  onClick={() => setShowCalendar(false)}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  ← Presets
-                </button>
+                <span className="text-sm font-bold text-gray-900">
+                  Select Date Range
+                </span>
                 <button
                   onClick={() => {
                     setIsOpen(false)
-                    setShowCalendar(false)
+                    setView('presets')
                   }}
-                  className="flex-1 px-3 py-2 text-sm bg-teal-600 text-white rounded-md hover:bg-teal-700"
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Calendar */}
+              <DayPicker
+                mode="range"
+                selected={tempRange}
+                onSelect={handleCustomRangeSelect}
+                numberOfMonths={1}
+                defaultMonth={tempRange?.from || baseDate || new Date()}
+                classNames={{
+                  months: "flex flex-col",
+                  month: "space-y-4",
+                  caption: "flex justify-center pt-1 relative items-center mb-4",
+                  caption_label: "text-base font-bold text-gray-900",
+                  nav: "space-x-1 flex items-center",
+                  nav_button: "h-9 w-9 bg-white hover:bg-teal-50 rounded-lg transition-colors border-2 border-gray-300 hover:border-teal-500",
+                  nav_button_previous: "absolute left-1",
+                  nav_button_next: "absolute right-1",
+                  table: "w-full border-collapse",
+                  head_row: "flex",
+                  head_cell: "text-gray-900 font-bold rounded-md w-10 text-sm",
+                  row: "flex w-full mt-2",
+                  cell: "text-center text-sm p-0 relative",
+                  day: "h-10 w-10 p-0 font-semibold rounded-lg hover:bg-teal-100 transition-colors text-gray-900 border-2 border-transparent",
+                  day_selected: "bg-teal-600 text-white hover:bg-teal-700 border-teal-700",
+                  day_today: "bg-blue-100 text-blue-900 border-blue-500",
+                  day_outside: "text-gray-300 opacity-40",
+                  day_disabled: "text-gray-200 opacity-40",
+                  day_range_middle: "bg-teal-100 text-teal-900 border-teal-200",
+                  day_range_start: "bg-teal-600 text-white",
+                  day_range_end: "bg-teal-600 text-white",
+                }}
+              />
+              
+              {/* Selected Range Display */}
+              {tempRange?.from && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-xs font-semibold text-gray-600 mb-1">Selected Range:</div>
+                  <div className="text-sm font-bold text-gray-900">
+                    {formatDateRangeDisplay(tempRange.from, tempRange.to || tempRange.from)}
+                  </div>
+                </div>
+              )}
+              
+              {/* Apply Button */}
+              <div className="mt-4 pt-4 border-t border-gray-200 flex gap-2">
+                <button
+                  onClick={cancelCustomRange}
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={applyCustomRange}
+                  disabled={!tempRange?.from || !tempRange?.to}
+                  className="flex-1 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Apply
                 </button>
@@ -195,4 +251,14 @@ const DateRangePicker = ({ value, onChange, baseDate }) => {
   )
 }
 
-export default DateRangePicker
+function PresetButton({ label, onClick, icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-teal-50 hover:text-teal-700 rounded-lg transition-colors flex items-center gap-3 border border-transparent hover:border-teal-200"
+    >
+      <span className="text-lg">{icon}</span>
+      <span>{label}</span>
+    </button>
+  )
+}
