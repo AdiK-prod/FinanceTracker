@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [successToast, setSuccessToast] = useState(null)
   const getCurrentMonthRange = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -40,7 +41,7 @@ const Dashboard = () => {
 
       let query = supabase
         .from('expenses')
-        .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional')
+        .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional, transaction_type')
         .order('transaction_date', { ascending: false })
 
       if (from) query = query.gte('transaction_date', from)
@@ -60,24 +61,38 @@ const Dashboard = () => {
     fetchExpenses()
   }, [dateRange, includeExceptional])
 
-  // Calculate total spending
-  const totalSpending = useMemo(() => {
-    return expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+  // Calculate income, expenses, and net balance
+  const incomeTotal = useMemo(() => {
+    return expenses
+      .filter(exp => exp.transaction_type === 'income')
+      .reduce((sum, exp) => sum + (exp.amount || 0), 0)
   }, [expenses])
+
+  const expenseTotal = useMemo(() => {
+    return expenses
+      .filter(exp => exp.transaction_type === 'expense')
+      .reduce((sum, exp) => sum + (exp.amount || 0), 0)
+  }, [expenses])
+
+  const netBalance = useMemo(() => {
+    return incomeTotal - expenseTotal
+  }, [incomeTotal, expenseTotal])
 
   const formatAmount = (amount) =>
     `₪${amount.toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
 
-  const transactionCount = expenses.length
-  const averageAmount = transactionCount ? totalSpending / transactionCount : 0
+  const incomeCount = expenses.filter(e => e.transaction_type === 'income').length
+  const expenseCount = expenses.filter(e => e.transaction_type === 'expense').length
 
-  // Group expenses by category for pie chart
+  // Group expenses by category for pie chart (expenses only)
   const categoryData = useMemo(() => {
     const grouped = {}
-    expenses.forEach(exp => {
-      const category = exp.main_category || 'Uncategorized'
-      grouped[category] = (grouped[category] || 0) + exp.amount
-    })
+    expenses
+      .filter(exp => exp.transaction_type === 'expense')
+      .forEach(exp => {
+        const category = exp.main_category || 'Uncategorized'
+        grouped[category] = (grouped[category] || 0) + exp.amount
+      })
     return Object.entries(grouped).map(([name, value]) => ({ name, value }))
   }, [expenses])
 
@@ -124,6 +139,29 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Success Toast */}
+      {successToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-start gap-3 animate-slide-in">
+          <Receipt className="w-6 h-6 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">
+              {successToast.total} transaction{successToast.total !== 1 ? 's' : ''} added successfully!
+            </p>
+            <p className="text-sm text-green-100 mt-1">
+              {successToast.expense > 0 && `${successToast.expense} expense${successToast.expense !== 1 ? 's' : ''}`}
+              {successToast.income > 0 && successToast.expense > 0 && ' • '}
+              {successToast.income > 0 && `${successToast.income} income`}
+            </p>
+          </div>
+          <button
+            onClick={() => setSuccessToast(null)}
+            className="ml-4 text-white hover:text-green-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -166,54 +204,112 @@ const Dashboard = () => {
       </div>
 
       {!includeExceptional && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center gap-3">
-          <Star className="w-5 h-5 text-orange-600" />
-          <p className="text-sm text-orange-900">
-            Exceptional expenses are excluded from totals and charts.
-          </p>
+        <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-orange-900">
+                Exceptional transactions excluded
+              </p>
+              <p className="text-xs text-orange-700 mt-1">
+                Showing only regular income and expenses. Toggle above to include one-time transactions.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Income/Expense/Balance Cards */}
       {isLoading ? (
-        <div className="animate-pulse grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="h-28 bg-gray-200 rounded-xl" />
-          <div className="h-28 bg-gray-200 rounded-xl" />
-          <div className="h-28 bg-gray-200 rounded-xl" />
+        <div className="animate-pulse grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-40 bg-gray-200 rounded-xl" />
+          <div className="h-40 bg-gray-200 rounded-xl" />
+          <div className="h-40 bg-gray-200 rounded-xl" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Total Spending</span>
-              <Wallet className="w-5 h-5 text-teal" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {formatAmount(totalSpending)}
-            </div>
-            <div className="text-sm text-gray-500">
-              {formatDateRangeDisplay(dateRange?.from, dateRange?.to)}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Income Card */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">💰</span>
+                  <p className="text-sm font-semibold text-green-700 uppercase tracking-wide">
+                    Total Income
+                  </p>
+                </div>
+                <p className="text-3xl font-bold text-green-900 mb-2">
+                  {formatAmount(incomeTotal)}
+                </p>
+                <p className="text-xs text-green-600">
+                  {incomeCount} transaction{incomeCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
+                💵
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Transactions</span>
-              <Receipt className="w-5 h-5 text-blue-600" />
+          
+          {/* Expense Card */}
+          <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border-2 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">💸</span>
+                  <p className="text-sm font-semibold text-red-700 uppercase tracking-wide">
+                    Total Expenses
+                  </p>
+                </div>
+                <p className="text-3xl font-bold text-red-900 mb-2">
+                  {formatAmount(expenseTotal)}
+                </p>
+                <p className="text-xs text-red-600">
+                  {expenseCount} transaction{expenseCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
+                🛒
+              </div>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {transactionCount}
-            </div>
-            <div className="text-sm text-gray-500">Total expenses tracked</div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Average</span>
-              <TrendingUp className="w-5 h-5 text-purple-600" />
+          
+          {/* Net Balance Card */}
+          <div className={`rounded-xl p-6 border-2 shadow-sm hover:shadow-md transition-shadow ${
+            netBalance >= 0 
+              ? 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200' 
+              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
+          }`}>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">{netBalance >= 0 ? '📈' : '📉'}</span>
+                  <p className={`text-sm font-semibold uppercase tracking-wide ${
+                    netBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
+                  }`}>
+                    Net Balance
+                  </p>
+                </div>
+                <p className={`text-3xl font-bold mb-2 ${
+                  netBalance >= 0 ? 'text-blue-900' : 'text-orange-900'
+                }`}>
+                  {netBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(netBalance))}
+                </p>
+                <p className={`text-xs font-medium ${
+                  netBalance >= 0 ? 'text-blue-600' : 'text-orange-600'
+                }`}>
+                  {netBalance >= 0 
+                    ? `Surplus: ${((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% saved`
+                    : `Deficit: ${Math.abs((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% overspent`
+                  }
+                </p>
+              </div>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg ${
+                netBalance >= 0 ? 'bg-blue-500' : 'bg-orange-500'
+              }`}>
+                {netBalance >= 0 ? '✅' : '⚠️'}
+              </div>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {formatAmount(averageAmount)}
-            </div>
-            <div className="text-sm text-gray-500">Per transaction</div>
           </div>
         </div>
       )}
@@ -222,17 +318,26 @@ const Dashboard = () => {
       {!isLoading && expenses.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
           <Wallet className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses yet</h3>
-          <p className="text-gray-600 mb-4">Upload your first CSV to get started</p>
-          <button onClick={() => setIsUploadOpen(true)} className="btn-primary">
-            Upload Expenses
-          </button>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions yet</h3>
+          <p className="text-gray-600 mb-4">Add your first transaction or upload a CSV file</p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={() => setShowAddModal(true)} className="btn-secondary flex items-center gap-2">
+              <Plus size={20} />
+              Add Manually
+            </button>
+            <button onClick={() => setIsUploadOpen(true)} className="btn-primary flex items-center gap-2">
+              <Upload size={20} />
+              Upload File
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Category Filter Pills */}
-      {expenses.length > 0 && (
-        <div className="flex flex-wrap gap-3">
+      {/* Category Filter Pills - Expenses Only */}
+      {expenses.length > 0 && categoryData.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Expense Breakdown by Category</h2>
+          <div className="flex flex-wrap gap-3">
           {categoryData.map((item) => (
             <button
               key={item.name}
@@ -249,6 +354,7 @@ const Dashboard = () => {
               </span>
             </button>
           ))}
+          </div>
         </div>
       )}
 
@@ -306,9 +412,18 @@ const Dashboard = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      {/* Merchant Name - RTL for Hebrew */}
-                      <div className="text-sm font-medium text-gray-900 truncate" dir="rtl">
-                        {expense.merchant}
+                      {/* Merchant Name with Income Badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 truncate" dir="rtl">
+                          {expense.merchant}
+                        </span>
+                        
+                        {/* Income Badge */}
+                        {expense.transaction_type === 'income' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                            💰 INCOME
+                          </span>
+                        )}
                       </div>
                       
                       {/* Date and Category */}
@@ -336,8 +451,10 @@ const Dashboard = () => {
                     
                     {/* Amount */}
                     <div className="ml-4 flex-shrink-0 text-right">
-                      <div className="text-sm font-semibold text-gray-900">
-                        ₪{expense.amount.toLocaleString('he-IL', { 
+                      <div className={`text-sm font-semibold ${
+                        expense.transaction_type === 'income' ? 'text-green-600' : 'text-gray-900'
+                      }`}>
+                        {expense.transaction_type === 'income' ? '+' : ''}₪{expense.amount.toLocaleString('he-IL', { 
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
                         })}
@@ -391,7 +508,11 @@ const Dashboard = () => {
       <AddTransactionModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSuccess={() => {
+        onSuccess={(counts) => {
+          // Show success toast
+          setSuccessToast(counts)
+          setTimeout(() => setSuccessToast(null), 5000)
+          
           // Refresh expenses by triggering a re-fetch
           const fetchExpenses = async () => {
             setIsLoading(true)
@@ -401,7 +522,7 @@ const Dashboard = () => {
 
             let query = supabase
               .from('expenses')
-              .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional')
+              .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional, transaction_type')
               .order('transaction_date', { ascending: false })
 
             if (from) query = query.gte('transaction_date', from)

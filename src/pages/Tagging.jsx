@@ -29,6 +29,7 @@ const Tagging = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [successToast, setSuccessToast] = useState(null)
 
   const fetchExpenses = async () => {
     setIsLoading(true)
@@ -291,6 +292,29 @@ const Tagging = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Success Toast */}
+      {successToast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-start gap-3 animate-slide-in">
+          <Tag className="w-6 h-6 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">
+              {successToast.total} transaction{successToast.total !== 1 ? 's' : ''} added successfully!
+            </p>
+            <p className="text-sm text-green-100 mt-1">
+              {successToast.expense > 0 && `${successToast.expense} expense${successToast.expense !== 1 ? 's' : ''}`}
+              {successToast.income > 0 && successToast.expense > 0 && ' • '}
+              {successToast.income > 0 && `${successToast.income} income`}
+            </p>
+          </div>
+          <button
+            onClick={() => setSuccessToast(null)}
+            className="ml-4 text-white hover:text-green-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+      
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -528,9 +552,14 @@ const Tagging = () => {
       <AddTransactionModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSuccess={() => {
-          fetchExpenses(); // Refresh data
-          fetchCategories(); // Refresh categories in case new ones were added
+        onSuccess={(counts) => {
+          // Show success toast
+          setSuccessToast(counts)
+          setTimeout(() => setSuccessToast(null), 5000)
+          
+          // Refresh data
+          fetchExpenses()
+          fetchCategories()
         }}
       />
     </div>

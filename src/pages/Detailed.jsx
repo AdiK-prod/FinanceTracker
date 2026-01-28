@@ -87,6 +87,7 @@ const Detailed = () => {
   const [chartType, setChartType] = useState('pie')
   const [showPercentages, setShowPercentages] = useState(true)
   const [categories, setCategories] = useState({ mains: [], subs: {} })
+  const [viewMode, setViewMode] = useState('breakdown') // 'breakdown' or 'balance'
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -194,7 +195,8 @@ const Detailed = () => {
       query = query.ilike('merchant', `%${filters.merchant}%`)
     }
 
-    const { data, error: fetchError } = await query.order('transaction_date', { ascending: false })
+    // Select all fields including transaction_type for balance analysis
+    const { data, error: fetchError } = await query.select('*, transaction_type').order('transaction_date', { ascending: false })
 
     if (fetchError) {
       setError(fetchError.message)
@@ -421,6 +423,74 @@ const Detailed = () => {
     }))
   }, [expenses, groupBy, secondaryGroupBy, totalSpending])
 
+  // Calculate monthly balance data for Balance Analysis view
+  const monthlyBalanceData = useMemo(() => {
+    const grouped = {}
+    
+    expenses.forEach(exp => {
+      // Group by month: "2026-01"
+      const monthKey = exp.transaction_date.substring(0, 7)
+      
+      if (!grouped[monthKey]) {
+        grouped[monthKey] = {
+          month: monthKey,
+          income: 0,
+          expenses: 0,
+          balance: 0,
+          incomeCount: 0,
+          expenseCount: 0
+        }
+      }
+      
+      if (exp.transaction_type === 'income') {
+        grouped[monthKey].income += exp.amount
+        grouped[monthKey].incomeCount += 1
+      } else {
+        grouped[monthKey].expenses += exp.amount
+        grouped[monthKey].expenseCount += 1
+      }
+    })
+    
+    // Sort by month chronologically
+    const sorted = Object.values(grouped).sort((a, b) => a.month.localeCompare(b.month))
+    
+    // Calculate balance and running total
+    let runningBalance = 0
+    
+    sorted.forEach(month => {
+      month.balance = month.income - month.expenses
+      runningBalance += month.balance
+      month.runningBalance = runningBalance
+      
+      // Format display name: "2026-01" → "Jan 2026"
+      const [year, monthNum] = month.month.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      month.displayName = `${monthNames[parseInt(monthNum) - 1]} ${year}`
+    })
+    
+    return sorted
+  }, [expenses])
+
+  // Balance summary statistics
+  const balanceSummary = useMemo(() => {
+    const totalIncome = monthlyBalanceData.reduce((sum, m) => sum + m.income, 0)
+    const totalExpenses = monthlyBalanceData.reduce((sum, m) => sum + m.expenses, 0)
+    const totalBalance = totalIncome - totalExpenses
+    const avgMonthlyBalance = monthlyBalanceData.length > 0 
+      ? totalBalance / monthlyBalanceData.length 
+      : 0
+    const positiveMonths = monthlyBalanceData.filter(m => m.balance >= 0).length
+    
+    return {
+      totalIncome,
+      totalExpenses,
+      totalBalance,
+      avgMonthlyBalance,
+      positiveMonths
+    }
+  }, [monthlyBalanceData])
+
   const exportToCSV = () => {
     const headers = ['Date', 'Merchant', 'Amount', 'Main Category', 'Sub Category', 'Notes', 'Exceptional']
     const rows = expenses.map((exp) => [
@@ -572,6 +642,33 @@ const Detailed = () => {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
+          <span className="text-sm font-semibold text-gray-700">View:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('breakdown')}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                viewMode === 'breakdown'
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📊 Category Breakdown
+            </button>
+            <button
+              onClick={() => setViewMode('balance')}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                viewMode === 'balance'
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              💰 Balance Analysis
+            </button>
+          </div>
+        </div>
+        
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
           <DateRangePicker value={dateRange} onChange={setDateRange} />
 
@@ -761,7 +858,9 @@ const Detailed = () => {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-200">
+        {/* Only show breakdown controls when in breakdown view */}
+        {viewMode === 'breakdown' && (
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Group by:</span>
@@ -842,9 +941,14 @@ const Detailed = () => {
             </div>
           </div>
         </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      {/* Conditional Content Based on View Mode */}
+      {viewMode === 'breakdown' ? (
+        // EXISTING BREAKDOWN VIEW
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-1">Total Spending</div>
           <div className="text-3xl font-bold text-gray-900">{formatAmount(totalSpending)}</div>
@@ -967,9 +1071,211 @@ const Detailed = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700 mt-6">
-          {error}
+          {error && (
+            <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700 mt-6">
+              {error}
+            </div>
+          )}
+        </>
+      ) : (
+        // NEW BALANCE ANALYSIS VIEW
+        <div>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white rounded-xl p-6 border-2 border-green-200 shadow-sm">
+              <p className="text-sm font-semibold text-green-700 mb-1">Total Income</p>
+              <p className="text-2xl font-bold text-green-900">
+                {formatAmount(balanceSummary.totalIncome)}
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border-2 border-red-200 shadow-sm">
+              <p className="text-sm font-semibold text-red-700 mb-1">Total Expenses</p>
+              <p className="text-2xl font-bold text-red-900">
+                {formatAmount(balanceSummary.totalExpenses)}
+              </p>
+            </div>
+            
+            <div className={`rounded-xl p-6 border-2 shadow-sm ${
+              balanceSummary.totalBalance >= 0 
+                ? 'bg-white border-blue-200' 
+                : 'bg-white border-orange-200'
+            }`}>
+              <p className={`text-sm font-semibold mb-1 ${
+                balanceSummary.totalBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
+              }`}>
+                Net Balance
+              </p>
+              <p className={`text-2xl font-bold ${
+                balanceSummary.totalBalance >= 0 ? 'text-blue-900' : 'text-orange-900'
+              }`}>
+                {balanceSummary.totalBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.totalBalance))}
+              </p>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+              <p className="text-sm font-semibold text-gray-700 mb-1">Avg Monthly Balance</p>
+              <p className={`text-2xl font-bold ${
+                balanceSummary.avgMonthlyBalance >= 0 ? 'text-green-900' : 'text-orange-900'
+              }`}>
+                {balanceSummary.avgMonthlyBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.avgMonthlyBalance))}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {balanceSummary.positiveMonths} of {monthlyBalanceData.length} months positive
+              </p>
+            </div>
+          </div>
+          
+          {/* Income vs Expenses Chart */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Income vs Expenses Over Time</h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={monthlyBalanceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="displayName" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={100}
+                  tick={{ fontSize: 11 }}
+                />
+                <YAxis />
+                <Tooltip
+                  formatter={(value) => formatAmount(value)}
+                />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="income" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  name="Income"
+                  dot={{ fill: '#10b981', r: 5 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="expenses" 
+                  stroke="#ef4444" 
+                  strokeWidth={3}
+                  name="Expenses"
+                  dot={{ fill: '#ef4444', r: 5 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="balance" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  name="Net Balance"
+                  dot={{ fill: '#3b82f6', r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          
+          {/* Monthly Balance Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Monthly Balance Breakdown</h3>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Month
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Income
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Expenses
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Balance
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Running Total
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Trend
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {monthlyBalanceData.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                        No transaction data for the selected period
+                      </td>
+                    </tr>
+                  ) : (
+                    monthlyBalanceData.map((month) => (
+                      <tr key={month.month} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                          {month.displayName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className="font-semibold text-green-600">
+                            +{formatAmount(month.income)}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {month.incomeCount} transaction{month.incomeCount !== 1 ? 's' : ''}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className="font-semibold text-red-600">
+                            -{formatAmount(month.expenses)}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {month.expenseCount} transaction{month.expenseCount !== 1 ? 's' : ''}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className={`font-bold ${
+                            month.balance >= 0 ? 'text-blue-600' : 'text-orange-600'
+                          }`}>
+                            {month.balance >= 0 ? '+' : ''}{formatAmount(Math.abs(month.balance))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          <span className={`font-bold ${
+                            month.runningBalance >= 0 ? 'text-blue-900' : 'text-orange-900'
+                          }`}>
+                            {month.runningBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(month.runningBalance))}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-2xl">
+                          {month.balance >= 0 ? '📈' : '📉'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  
+                  {/* Totals Row */}
+                  {monthlyBalanceData.length > 0 && (
+                    <tr className="bg-gray-100 font-bold">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        TOTAL
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-700">
+                        +{formatAmount(balanceSummary.totalIncome)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-700">
+                        -{formatAmount(balanceSummary.totalExpenses)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className={balanceSummary.totalBalance >= 0 ? 'text-blue-700' : 'text-orange-700'}>
+                          {balanceSummary.totalBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.totalBalance))}
+                        </span>
+                      </td>
+                      <td colSpan="2"></td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </div>
