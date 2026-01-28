@@ -81,7 +81,8 @@ Check browser console (F12) for full details.
       if (to) query = query.lte('transaction_date', to)
       if (!includeExceptional) query = query.eq('is_exceptional', false)
 
-      const { data, error: fetchError } = await query
+      // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
+      const { data, error: fetchError } = await query.range(0, 9999)
       if (fetchError) {
         setError(fetchError.message)
         setExpenses([])
@@ -570,7 +571,8 @@ Check browser console (F12) for full details.
             if (to) query = query.lte('transaction_date', to)
             if (!includeExceptional) query = query.eq('is_exceptional', false)
 
-            const { data, error: fetchError } = await query
+            // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
+            const { data, error: fetchError } = await query.range(0, 9999)
             if (fetchError) {
               setError(fetchError.message)
               setExpenses([])

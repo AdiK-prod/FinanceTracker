@@ -19,6 +19,7 @@ const CategoryManagement = () => {
     setIsLoading(true)
     setError('')
 
+    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data, error: fetchError } = await supabase
       .from('expense_categories')
       .select('id, main_category, sub_category, is_default, display_order')
@@ -26,6 +27,7 @@ const CategoryManagement = () => {
       .order('display_order', { ascending: true })
       .order('main_category', { ascending: true })
       .order('sub_category', { ascending: true })
+      .range(0, 9999)
 
     if (fetchError) {
       setError(fetchError.message)

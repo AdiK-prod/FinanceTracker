@@ -9,12 +9,14 @@ export async function diagnoseIncomeData() {
   }
   
   // Get ALL income transactions (no filters)
+  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
   const { data: allIncome, error } = await supabase
     .from('expenses')
     .select('*')
     .eq('user_id', user.user.id)
     .eq('transaction_type', 'income')
     .order('transaction_date', { ascending: true })
+    .range(0, 9999)
   
   if (error) {
     console.error('Error fetching income:', error)
@@ -136,10 +138,12 @@ export async function diagnoseIncomeData() {
   console.log('=== EXPENSE CHECK (for comparison) ===')
   
   // Quick check on expenses
+  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
   const { data: allExpenses } = await supabase
     .from('expenses')
     .select('transaction_type')
     .eq('user_id', user.user.id)
+    .range(0, 9999)
   
   const expenseCount = allExpenses?.filter(e => e.transaction_type === 'expense').length || 0
   const nullTypeCount = allExpenses?.filter(e => !e.transaction_type || e.transaction_type === null).length || 0
@@ -179,6 +183,7 @@ export async function diagnoseExpenseQuery(dateRange) {
   console.log('=== EXPENSE QUERY DIAGNOSTIC ===')
   console.log('Testing query with date range:', dateRange)
   
+  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
   const { data, error } = await supabase
     .from('expenses')
     .select('*, transaction_type')
@@ -186,6 +191,7 @@ export async function diagnoseExpenseQuery(dateRange) {
     .gte('transaction_date', dateRange.from.toISOString().split('T')[0])
     .lte('transaction_date', dateRange.to.toISOString().split('T')[0])
     .order('transaction_date', { ascending: false })
+    .range(0, 9999)
   
   if (error) {
     console.error('Query error:', error)

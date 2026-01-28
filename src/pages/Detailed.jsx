@@ -196,7 +196,11 @@ const Detailed = () => {
     }
 
     // Select all fields including transaction_type for balance analysis
-    const { data, error: fetchError } = await query.select('*, transaction_type').order('transaction_date', { ascending: false })
+    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
+    const { data, error: fetchError } = await query
+      .select('*, transaction_type')
+      .order('transaction_date', { ascending: false })
+      .range(0, 9999)
 
     if (fetchError) {
       setError(fetchError.message)

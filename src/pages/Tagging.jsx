@@ -36,11 +36,13 @@ const Tagging = () => {
   const fetchExpenses = async () => {
     setIsLoading(true)
     setError('')
+    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data, error: fetchError } = await supabase
       .from('expenses')
       .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional, transaction_type')
       .order('main_category', { ascending: true, nullsFirst: true })
       .order('transaction_date', { ascending: false })
+      .range(0, 9999)
 
     if (fetchError) {
       setError(fetchError.message)

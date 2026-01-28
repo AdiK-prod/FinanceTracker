@@ -508,12 +508,14 @@ const UploadZone = ({ onConfirmUpload }) => {
 
     console.log('Date range:', minDate, 'to', maxDate)
 
+    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data: existingExpenses, error } = await supabase
       .from('expenses')
       .select('transaction_date, merchant, amount')
       .eq('user_id', userId)
       .gte('transaction_date', minDate)
       .lte('transaction_date', maxDate)
+      .range(0, 9999)
 
     if (error) {
       console.error('Error fetching existing expenses:', error)
@@ -559,6 +561,7 @@ const UploadZone = ({ onConfirmUpload }) => {
       .map((merchant) => `merchant.ilike.${escapeForIlike(merchant)}`)
       .join(',')
 
+    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data: patterns } = uniqueMerchants.length
       ? await supabase
         .from('expenses')
@@ -566,6 +569,7 @@ const UploadZone = ({ onConfirmUpload }) => {
         .not('main_category', 'is', null)
         .or(ilikeFilters)
         .order('transaction_date', { ascending: false })
+        .range(0, 9999)
       : { data: [] }
 
     const patternMap = (patterns || []).reduce((acc, row) => {
