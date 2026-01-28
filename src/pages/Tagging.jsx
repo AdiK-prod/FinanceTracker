@@ -23,6 +23,8 @@ const Tagging = () => {
     showAutoTagged: false,
     showOnlyMissingSubCategory: false,
     showExceptional: null,
+    showOnlyExpenses: false,
+    showOnlyIncome: false,
     dateFrom: '',
     dateTo: '',
   })
@@ -36,7 +38,7 @@ const Tagging = () => {
     setError('')
     const { data, error: fetchError } = await supabase
       .from('expenses')
-      .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional')
+      .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional, transaction_type')
       .order('main_category', { ascending: true, nullsFirst: true })
       .order('transaction_date', { ascending: false })
 
@@ -113,6 +115,10 @@ const Tagging = () => {
       return false
     }
 
+    // Filter by transaction type
+    if (filters.showOnlyExpenses && expense.transaction_type !== 'expense') return false
+    if (filters.showOnlyIncome && expense.transaction_type !== 'income') return false
+
     if (filters.dateFrom && expense.transaction_date < filters.dateFrom) return false
     if (filters.dateTo && expense.transaction_date > filters.dateTo) return false
 
@@ -129,6 +135,8 @@ const Tagging = () => {
     if (filters.showAutoTagged) count++
     if (filters.showOnlyMissingSubCategory) count++
     if (filters.showExceptional !== null) count++
+    if (filters.showOnlyExpenses) count++
+    if (filters.showOnlyIncome) count++
     if (filters.dateFrom && filters.dateFrom !== '') count++
     if (filters.dateTo && filters.dateTo !== '') count++
     
@@ -147,6 +155,8 @@ const Tagging = () => {
       showAutoTagged: false,
       showOnlyMissingSubCategory: false,
       showExceptional: null,
+      showOnlyExpenses: false,
+      showOnlyIncome: false,
       dateFrom: '',
       dateTo: '',
     })
@@ -200,6 +210,10 @@ const Tagging = () => {
     }
     if (field === 'is_exceptional') {
       updates = { is_exceptional: value }
+    }
+    if (field === 'transaction_type') {
+      // value is an object with transaction_type and cleared categories
+      updates = value
     }
 
     setExpenses((prev) => prev.map((exp) => (ids.includes(exp.id) ? { ...exp, ...updates } : exp)))
@@ -496,6 +510,38 @@ const Tagging = () => {
                 />
                 <span className="text-sm font-medium text-gray-700">
                   Auto-tagged only
+                </span>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.showOnlyExpenses}
+                  onChange={(e) => setFilters({ 
+                    ...filters, 
+                    showOnlyExpenses: e.target.checked,
+                    showOnlyIncome: e.target.checked ? false : filters.showOnlyIncome
+                  })}
+                  className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  💸 Expenses only
+                </span>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.showOnlyIncome}
+                  onChange={(e) => setFilters({ 
+                    ...filters, 
+                    showOnlyIncome: e.target.checked,
+                    showOnlyExpenses: e.target.checked ? false : filters.showOnlyExpenses
+                  })}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  💰 Income only
                 </span>
               </label>
             </div>

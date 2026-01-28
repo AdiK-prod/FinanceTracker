@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react'
+import { CheckCircle2, Star, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Check, X, Edit2 } from 'lucide-react'
 import { formatDateDisplay } from '../utils/dateFormatters'
+import { supabase } from '../lib/supabase'
 
 const ExpenseTable = ({
   expenses,
@@ -16,6 +17,7 @@ const ExpenseTable = ({
   const [selectedRows, setSelectedRows] = useState(new Set())
   const [bulkMainCategory, setBulkMainCategory] = useState('')
   const [bulkSubCategory, setBulkSubCategory] = useState('')
+  const [editingMerchant, setEditingMerchant] = useState(null) // { id, value }
   const [sortConfig, setSortConfig] = useState({
     key: 'transaction_date',
     direction: 'desc',
@@ -28,6 +30,63 @@ const ExpenseTable = ({
       return
     }
     onUpdateExpense(id, { [field]: value })
+  }
+
+  // Update transaction type
+  const handleTypeChange = async (id, newType) => {
+    if (!onUpdateExpense) return
+    
+    const updates = {
+      transaction_type: newType,
+      is_auto_tagged: false
+    }
+    
+    // If changing to income, clear categories
+    if (newType === 'income') {
+      updates.main_category = null
+      updates.sub_category = null
+    }
+    
+    onUpdateExpense(id, updates)
+  }
+
+  // Update merchant name
+  const handleMerchantUpdate = async (id, newMerchant) => {
+    if (!newMerchant || newMerchant.trim() === '') {
+      alert('Merchant name cannot be empty')
+      return false
+    }
+    
+    if (!onUpdateExpense) return false
+    
+    onUpdateExpense(id, { merchant: newMerchant.trim() })
+    setEditingMerchant(null)
+    return true
+  }
+
+  // Bulk convert transaction type
+  const handleBulkTypeConversion = async (newType) => {
+    if (selectedRows.size === 0 || !onBulkUpdate) return
+    
+    const confirmMsg = `Convert ${selectedRows.size} transaction${selectedRows.size !== 1 ? 's' : ''} to ${newType === 'income' ? 'Income' : 'Expense'}?${
+      newType === 'income' ? '\n\nNote: Category assignments will be removed.' : ''
+    }`
+    
+    if (!window.confirm(confirmMsg)) return
+    
+    const updates = {
+      transaction_type: newType,
+      is_auto_tagged: false
+    }
+    
+    // If converting to income, clear categories
+    if (newType === 'income') {
+      updates.main_category = null
+      updates.sub_category = null
+    }
+    
+    onBulkUpdate(Array.from(selectedRows), 'transaction_type', updates)
+    setSelectedRows(new Set())
   }
 
   const toggleRowSelection = (id) => {
@@ -162,6 +221,25 @@ const ExpenseTable = ({
             >
               Apply to {selectedRows.size}
             </button>
+            
+            {/* Type Conversion Buttons */}
+            <div className="h-8 w-px bg-gray-300"></div>
+            <button
+              onClick={() => handleBulkTypeConversion('expense')}
+              className="px-3 py-2 text-sm border-2 border-red-600 text-red-700 rounded-md hover:bg-red-50 font-semibold"
+              title="Convert selected transactions to expenses"
+            >
+              💸 Mark as Expense
+            </button>
+            <button
+              onClick={() => handleBulkTypeConversion('income')}
+              className="px-3 py-2 text-sm border-2 border-green-600 text-green-700 rounded-md hover:bg-green-50 font-semibold"
+              title="Convert selected transactions to income"
+            >
+              💰 Mark as Income
+            </button>
+            
+            <div className="h-8 w-px bg-gray-300"></div>
             <button
               onClick={() => handleBulkCategoryChange('is_exceptional', true)}
               className="px-3 py-2 text-sm border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50"
@@ -218,6 +296,9 @@ const ExpenseTable = ({
                 <SortableHeader columnKey="transaction_date">Date</SortableHeader>
                 <SortableHeader columnKey="merchant">Merchant</SortableHeader>
                 <SortableHeader columnKey="amount">Amount</SortableHeader>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Type
+                </th>
                 <SortableHeader columnKey="main_category">Main Category</SortableHeader>
                 <SortableHeader columnKey="sub_category">Sub Category</SortableHeader>
                 <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -234,20 +315,26 @@ const ExpenseTable = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12">
+                  <td colSpan={10} className="px-6 py-12">
                     <div className="h-8 w-full rounded bg-gray-100 animate-pulse" />
                   </td>
                 </tr>
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12">
+                  <td colSpan={10} className="px-6 py-12">
                     <p className="text-sm text-gray-500">No expenses found.</p>
                   </td>
                 </tr>
               ) : (
                 sortedExpenses.map((expense, index) => {
-                const needsAttention = !expense.main_category
-                const rowBackground = needsAttention ? 'bg-yellow-50' : (index % 2 === 1 ? 'bg-gray-50/50' : '')
+                const isIncome = expense.transaction_type === 'income'
+                const isEditing = editingMerchant?.id === expense.id
+                const needsAttention = !expense.main_category && !isIncome
+                const rowBackground = isIncome 
+                  ? 'bg-green-50/30' 
+                  : needsAttention 
+                    ? 'bg-yellow-50' 
+                    : (index % 2 === 1 ? 'bg-gray-50/50' : '')
                 return (
                   <tr
                     key={expense.id}
@@ -264,36 +351,118 @@ const ExpenseTable = ({
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDateDisplay(expense.transaction_date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {expense.merchant}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatAmount(expense.amount)}
-                    </td>
+                    
+                    {/* Merchant - Editable */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={expense.main_category || ''}
-                        onChange={(e) => handleCategoryChange(expense.id, 'main_category', e.target.value)}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
-                      >
-                        <option value="">Select...</option>
-                        {mainCategories.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingMerchant.value}
+                            onChange={(e) => setEditingMerchant({ ...editingMerchant, value: e.target.value })}
+                            className="px-2 py-1 border-2 border-teal-500 rounded text-sm w-full focus:outline-none focus:ring-2 focus:ring-teal"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleMerchantUpdate(expense.id, editingMerchant.value)
+                              } else if (e.key === 'Escape') {
+                                setEditingMerchant(null)
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleMerchantUpdate(expense.id, editingMerchant.value)}
+                            className="p-1 text-green-600 hover:text-green-700"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingMerchant(null)}
+                            className="p-1 text-gray-600 hover:text-gray-700"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 group">
+                          <span className="text-sm font-medium text-gray-900">
+                            {expense.merchant}
+                          </span>
+                          <button
+                            onClick={() => setEditingMerchant({ id: expense.id, value: expense.merchant })}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-teal-600 transition-opacity"
+                            title="Edit merchant name"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={expense.sub_category || ''}
-                        onChange={(e) => handleCategoryChange(expense.id, 'sub_category', e.target.value)}
-                        disabled={!expense.main_category}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                    
+                    {/* Amount */}
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <span className={`text-sm font-semibold ${
+                        isIncome ? 'text-green-600' : 'text-gray-900'
+                      }`}>
+                        {isIncome ? '+' : ''}₪{expense.amount.toLocaleString('he-IL', { 
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2 
+                        })}
+                      </span>
+                    </td>
+                    
+                    {/* Type - Toggle Button */}
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        onClick={() => handleTypeChange(expense.id, isIncome ? 'expense' : 'income')}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                          isIncome
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        }`}
+                        title={`Change to ${isIncome ? 'Expense' : 'Income'}`}
                       >
-                        <option value="">Select...</option>
-                        {expense.main_category && subCategories[expense.main_category]?.map(sub => (
-                          <option key={sub} value={sub}>{sub}</option>
-                        ))}
-                      </select>
+                        {isIncome ? '💰 Income' : '💸 Expense'}
+                      </button>
+                    </td>
+                    
+                    {/* Main Category */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isIncome ? (
+                        <span className="text-xs text-gray-400 italic">N/A</span>
+                      ) : (
+                        <select
+                          value={expense.main_category || ''}
+                          onChange={(e) => handleCategoryChange(expense.id, 'main_category', e.target.value)}
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
+                        >
+                          <option value="">Select...</option>
+                          {mainCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      )}
+                    </td>
+                    
+                    {/* Sub Category */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isIncome ? (
+                        <span className="text-xs text-gray-400 italic">N/A</span>
+                      ) : (
+                        <select
+                          value={expense.sub_category || ''}
+                          onChange={(e) => handleCategoryChange(expense.id, 'sub_category', e.target.value)}
+                          disabled={!expense.main_category}
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                        >
+                          <option value="">Select...</option>
+                          {expense.main_category && subCategories[expense.main_category]?.map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button
