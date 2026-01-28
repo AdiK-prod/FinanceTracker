@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, X, Wallet, Receipt, TrendingUp, Star, Plus } from 'lucide-react'
+import { Upload, X, Wallet, Receipt, TrendingUp, Star, Plus, Search } from 'lucide-react'
 import PieChartComponent from '../components/PieChart'
 import DateRangePicker from '../components/DateRangePicker'
 import UploadZone from '../components/UploadZone'
@@ -8,6 +8,7 @@ import AddTransactionModal from '../components/AddTransactionModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDateDisplay, formatDateRangeDisplay, formatDateForDB } from '../utils/dateFormatters'
+import { diagnoseIncomeData, diagnoseExpenseQuery } from '../utils/diagnostics'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -31,6 +32,38 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [includeExceptional, setIncludeExceptional] = useState(true)
+
+  // Diagnostic function
+  const runDiagnostics = async () => {
+    console.clear()
+    console.log('🔍 Running diagnostics...')
+    console.log('')
+    
+    // Run income diagnostic
+    const incomeReport = await diagnoseIncomeData()
+    
+    // Run query diagnostic with current date range
+    console.log('')
+    await diagnoseExpenseQuery(dateRange)
+    
+    console.log('')
+    console.log('💡 TIP: Check the console output above for detailed analysis')
+    
+    // Show alert with summary
+    if (incomeReport) {
+      const summary = `
+Diagnostic Results:
+━━━━━━━━━━━━━━━━━━━━━
+Total Income: ${incomeReport.totalIncome}
+In Current Range: ${incomeReport.inDefaultRange}
+${incomeReport.needsDateRangeAdjustment ? '\n⚠️ ISSUE: Income exists but not in current date range' : ''}
+${incomeReport.noIncomeFound ? '\n⚠️ WARNING: No income transactions found' : ''}
+
+Check browser console (F12) for full details.
+      `
+      alert(summary.trim())
+    }
+  }
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -192,6 +225,14 @@ const Dashboard = () => {
           >
             <Plus size={20} />
             Add Manually
+          </button>
+          <button
+            onClick={runDiagnostics}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
+            title="Run diagnostic to check income data and date filtering"
+          >
+            <Search size={20} />
+            Diagnose Data
           </button>
           <button
             onClick={() => setIsUploadOpen(true)}
