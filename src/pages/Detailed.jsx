@@ -27,6 +27,32 @@ const CHART_COLORS = [
   '#ef4444', '#f87171', '#fca5a5', '#fecaca',
 ]
 
+// Month-specific color palette for chronological data
+const MONTH_COLORS = [
+  '#0ea5e9', // Sky blue - January
+  '#8b5cf6', // Purple - February
+  '#ec4899', // Pink - March
+  '#f59e0b', // Amber - April
+  '#10b981', // Emerald - May
+  '#06b6d4', // Cyan - June
+  '#f97316', // Orange - July
+  '#84cc16', // Lime - August
+  '#6366f1', // Indigo - September
+  '#14b8a6', // Teal - October
+  '#f43f5e', // Rose - November
+  '#a855f7', // Violet - December
+]
+
+// Get color for a specific month
+const getColorForMonth = (monthKey) => {
+  // Extract month number from "2025-01" format
+  if (monthKey && monthKey.includes('-')) {
+    const monthIndex = parseInt(monthKey.split('-')[1]) - 1
+    return MONTH_COLORS[monthIndex % 12]
+  }
+  return CHART_COLORS[0]
+}
+
 const Detailed = () => {
   const { user } = useAuth()
   const [expenses, setExpenses] = useState([])
@@ -57,6 +83,7 @@ const Detailed = () => {
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
 
   const [groupBy, setGroupBy] = useState('main_category')
+  const [secondaryGroupBy, setSecondaryGroupBy] = useState(null)
   const [chartType, setChartType] = useState('pie')
   const [showPercentages, setShowPercentages] = useState(true)
   const [categories, setCategories] = useState({ mains: [], subs: {} })
@@ -240,6 +267,24 @@ const Detailed = () => {
 
   const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
 
+  const getActiveFilterCount = () => {
+    let count = 0
+    
+    // Category filters
+    if (!allCategoriesSelected) count++
+    
+    // Other filters
+    if (filters.minAmount && filters.minAmount !== '') count++
+    if (filters.maxAmount && filters.maxAmount !== '') count++
+    if (filters.merchant && filters.merchant.trim() !== '') count++
+    if (!filters.includeExceptional) count++
+    
+    return count
+  }
+
+  const activeFilterCount = getActiveFilterCount()
+  const hasActiveFilters = activeFilterCount > 0
+
   const totalSpending = useMemo(
     () => expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0),
     [expenses]
@@ -250,40 +295,107 @@ const Detailed = () => {
     [expenses, totalSpending]
   )
 
+  const getGroupKey = (expense, groupType) => {
+    switch (groupType) {
+      case 'main_category':
+        return expense.main_category || 'Uncategorized'
+      case 'sub_category':
+        return expense.sub_category || 'Uncategorized'
+      case 'merchant':
+        return expense.merchant
+      case 'date': {
+        const date = new Date(`${expense.transaction_date}T00:00:00`)
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      }
+      default:
+        return 'Other'
+    }
+  }
+
+  const getGroupLabel = (key, groupType) => {
+    if (groupType === 'date') {
+      const [year, month] = key.split('-')
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      return `${monthNames[parseInt(month) - 1]} ${year}`
+    }
+    return key
+  }
+
   const aggregatedData = useMemo(() => {
     if (!expenses.length) return []
+    
+    // If secondary grouping is enabled
+    if (secondaryGroupBy) {
+      const primaryGroups = {}
+      
+      expenses.forEach((expense) => {
+        const primaryKey = getGroupKey(expense, groupBy)
+        const secondaryKey = getGroupKey(expense, secondaryGroupBy)
+        
+        if (!primaryGroups[primaryKey]) {
+          primaryGroups[primaryKey] = {
+            name: getGroupLabel(primaryKey, groupBy),
+            sortKey: primaryKey,
+            total: 0,
+            count: 0,
+            children: {}
+          }
+        }
+        
+        if (!primaryGroups[primaryKey].children[secondaryKey]) {
+          primaryGroups[primaryKey].children[secondaryKey] = {
+            name: getGroupLabel(secondaryKey, secondaryGroupBy),
+            sortKey: secondaryKey,
+            total: 0,
+            count: 0
+          }
+        }
+        
+        primaryGroups[primaryKey].total += expense.amount || 0
+        primaryGroups[primaryKey].count += 1
+        primaryGroups[primaryKey].children[secondaryKey].total += expense.amount || 0
+        primaryGroups[primaryKey].children[secondaryKey].count += 1
+      })
+      
+      let result = Object.values(primaryGroups)
+      
+      // Sort based on primary groupBy type
+      if (groupBy === 'date') {
+        result.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      } else {
+        result.sort((a, b) => b.total - a.total)
+      }
+      
+      // Convert children to arrays and sort
+      result = result.map(item => ({
+        ...item,
+        children: Object.values(item.children).sort((a, b) => 
+          secondaryGroupBy === 'date' 
+            ? a.sortKey.localeCompare(b.sortKey)
+            : b.total - a.total
+        ).map(child => ({
+          ...child,
+          total: Math.round(child.total * 100) / 100,
+          percentage: item.total ? Math.round((child.total / item.total) * 100) : 0
+        })),
+        total: Math.round(item.total * 100) / 100,
+        percentage: totalSpending ? Math.round((item.total / totalSpending) * 100) : 0
+      }))
+      
+      return result
+    }
+    
+    // Standard single-level grouping
     const grouped = {}
 
     expenses.forEach((expense) => {
-      let key = 'Other'
-      let label = 'Other'
-
-      switch (groupBy) {
-        case 'main_category':
-          key = expense.main_category || 'Uncategorized'
-          label = key
-          break
-        case 'sub_category':
-          key = expense.sub_category || 'Uncategorized'
-          label = key
-          break
-        case 'merchant':
-          key = expense.merchant
-          label = key
-          break
-        case 'date': {
-          const date = new Date(`${expense.transaction_date}T00:00:00`)
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          label = formatMonthYear(date)
-          break
-        }
-        default:
-          break
-      }
+      const key = getGroupKey(expense, groupBy)
+      const label = getGroupLabel(key, groupBy)
 
       if (!grouped[key]) {
         grouped[key] = {
           name: label,
+          sortKey: key,
           total: 0,
           count: 0,
         }
@@ -293,14 +405,21 @@ const Detailed = () => {
       grouped[key].count += 1
     })
 
-    return Object.values(grouped)
-      .sort((a, b) => b.total - a.total)
-      .map((item) => ({
-        ...item,
-        total: Math.round(item.total * 100) / 100,
-        percentage: totalSpending ? Math.round((item.total / totalSpending) * 100) : 0,
-      }))
-  }, [expenses, groupBy, totalSpending])
+    let result = Object.values(grouped)
+    
+    // SMART SORTING: Chronological for dates, by amount for categories
+    if (groupBy === 'date') {
+      result.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    } else {
+      result.sort((a, b) => b.total - a.total)
+    }
+
+    return result.map((item) => ({
+      ...item,
+      total: Math.round(item.total * 100) / 100,
+      percentage: totalSpending ? Math.round((item.total / totalSpending) * 100) : 0,
+    }))
+  }, [expenses, groupBy, secondaryGroupBy, totalSpending])
 
   const exportToCSV = () => {
     const headers = ['Date', 'Merchant', 'Amount', 'Main Category', 'Sub Category', 'Notes', 'Exceptional']
@@ -339,6 +458,16 @@ const Detailed = () => {
         </div>
       )
     }
+    
+    // Use month colors when grouping by date, otherwise use standard colors
+    const colors = groupBy === 'date' 
+      ? aggregatedData.map(item => getColorForMonth(item.sortKey))
+      : CHART_COLORS
+
+    // For secondary grouping, flatten the data for chart display
+    const chartData = secondaryGroupBy 
+      ? aggregatedData.flatMap(item => item.children || [])
+      : aggregatedData
 
     switch (chartType) {
       case 'pie':
@@ -346,7 +475,7 @@ const Detailed = () => {
           <ResponsiveContainer width="100%" height={400}>
             <PieChart>
               <Pie
-                data={aggregatedData}
+                data={chartData}
                 dataKey="total"
                 nameKey="name"
                 cx="50%"
@@ -354,8 +483,8 @@ const Detailed = () => {
                 outerRadius={150}
                 label={({ name, percentage }) => (showPercentages ? `${name}: ${percentage}%` : name)}
               >
-                {aggregatedData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => formatAmount(value)} />
@@ -366,26 +495,51 @@ const Detailed = () => {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={aggregatedData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 11 }}
+              />
               <YAxis />
               <Tooltip formatter={(value) => formatAmount(value)} />
               <Legend />
-              <Bar dataKey="total" fill="#0d9488" name="Total Spending" />
+              <Bar dataKey="total" name="Total Spending">
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         )
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={aggregatedData}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <XAxis 
+                dataKey="name" 
+                angle={-45} 
+                textAnchor="end" 
+                height={100}
+                interval={0}
+                tick={{ fontSize: 11 }}
+              />
               <YAxis />
               <Tooltip formatter={(value) => formatAmount(value)} />
               <Legend />
-              <Line type="monotone" dataKey="total" stroke="#0d9488" strokeWidth={2} name="Total Spending" />
+              <Line 
+                type="monotone" 
+                dataKey="total" 
+                stroke="#0d9488" 
+                strokeWidth={3}
+                dot={{ fill: '#0d9488', r: 5 }}
+                name="Total Spending" 
+              />
             </LineChart>
           </ResponsiveContainer>
         )
@@ -424,17 +578,17 @@ const Detailed = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
-                !allCategoriesSelected
-                  ? 'border-teal bg-teal-50 text-teal'
+              className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors font-medium ${
+                hasActiveFilters
+                  ? 'border-teal-600 bg-teal-50 text-teal-700 shadow-sm'
                   : 'border-gray-300 hover:bg-gray-50'
               }`}
             >
               <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Categories</span>
-              {!allCategoriesSelected && (
-                <span className="px-2 py-0.5 bg-teal text-white text-xs rounded-full">
-                  {selectedMainCategories.length}/{categories.mains.length}
+              <span className="text-sm">Filters</span>
+              {hasActiveFilters && (
+                <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                  {activeFilterCount}
                 </span>
               )}
               <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
@@ -608,18 +762,42 @@ const Detailed = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-200">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-700">Group by:</span>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              className="px-3 py-1.5 border rounded-lg text-sm"
-            >
-              <option value="main_category">Main Category</option>
-              <option value="sub_category">Sub Category</option>
-              <option value="merchant">Merchant</option>
-              <option value="date">Month</option>
-            </select>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Group by:</span>
+              <select
+                value={groupBy}
+                onChange={(e) => {
+                  setGroupBy(e.target.value)
+                  // Reset secondary grouping if same as primary
+                  if (secondaryGroupBy === e.target.value) {
+                    setSecondaryGroupBy(null)
+                  }
+                }}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium"
+              >
+                <option value="main_category">Main Category</option>
+                <option value="sub_category">Sub Category</option>
+                <option value="merchant">Merchant</option>
+                <option value="date">Month</option>
+              </select>
+            </div>
+
+            {/* Secondary Grouping */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">then by:</span>
+              <select
+                value={secondaryGroupBy || ''}
+                onChange={(e) => setSecondaryGroupBy(e.target.value || null)}
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium"
+              >
+                <option value="">None</option>
+                <option value="main_category" disabled={groupBy === 'main_category'}>Main Category</option>
+                <option value="sub_category" disabled={groupBy === 'sub_category'}>Sub Category</option>
+                <option value="merchant" disabled={groupBy === 'merchant'}>Merchant</option>
+                <option value="date" disabled={groupBy === 'date'}>Month</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -697,14 +875,21 @@ const Detailed = () => {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Detailed Breakdown</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Detailed Breakdown
+            {secondaryGroupBy && (
+              <span className="text-sm font-normal text-gray-600 ml-2">
+                (Grouped by {groupBy.replace('_', ' ')} → {secondaryGroupBy.replace('_', ' ')})
+              </span>
+            )}
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  {groupBy.replace('_', ' ')}
+                  {secondaryGroupBy ? `${groupBy.replace('_', ' ')} / ${secondaryGroupBy.replace('_', ' ')}` : groupBy.replace('_', ' ')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
                   Total
@@ -722,27 +907,60 @@ const Detailed = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {aggregatedData.map((item, idx) => (
-                <tr key={`${item.name}-${idx}`} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.name}</td>
-                  <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
-                    {formatAmount(item.total)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-right text-gray-600">
-                    <div className="flex items-center justify-end gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-teal h-2 rounded-full"
-                          style={{ width: `${item.percentage}%` }}
-                        />
+                <>
+                  {/* Primary row */}
+                  <tr key={`${item.name}-${idx}`} className={`hover:bg-gray-50 ${secondaryGroupBy ? 'bg-gray-50 font-semibold' : ''}`}>
+                    <td className={`px-6 py-4 text-sm ${secondaryGroupBy ? 'font-bold' : 'font-medium'} text-gray-900`}>
+                      {item.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
+                      {formatAmount(item.total)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right text-gray-600">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-teal h-2 rounded-full"
+                            style={{ width: `${item.percentage}%` }}
+                          />
+                        </div>
+                        <span>{item.percentage}%</span>
                       </div>
-                      <span>{item.percentage}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-center text-gray-600">{item.count}</td>
-                  <td className="px-6 py-4 text-sm text-right text-gray-600">
-                    {formatAmount(item.total / item.count)}
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-center text-gray-600">{item.count}</td>
+                    <td className="px-6 py-4 text-sm text-right text-gray-600">
+                      {formatAmount(item.total / item.count)}
+                    </td>
+                  </tr>
+                  
+                  {/* Secondary rows (if nested grouping) */}
+                  {secondaryGroupBy && item.children && item.children.map((child, childIdx) => (
+                    <tr key={`${item.name}-${child.name}-${childIdx}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm text-gray-700 pl-12">
+                        <span className="text-gray-400 mr-2">└</span>
+                        {child.name}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-right text-gray-700">
+                        {formatAmount(child.total)}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-right text-gray-500">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-teal-400 h-2 rounded-full"
+                              style={{ width: `${child.percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs">{child.percentage}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-sm text-center text-gray-500">{child.count}</td>
+                      <td className="px-6 py-3 text-sm text-right text-gray-500">
+                        {formatAmount(child.total / child.count)}
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ))}
             </tbody>
           </table>

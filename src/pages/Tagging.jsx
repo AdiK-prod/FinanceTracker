@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Search, Filter, X, Upload } from 'lucide-react'
+import { Tag, Search, Filter, X, Upload, ChevronDown } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
 import UploadModal from '../components/UploadModal'
 import { supabase } from '../lib/supabase'
@@ -20,6 +20,7 @@ const Tagging = () => {
     subCategory: '',
     showUncategorized: false,
     showAutoTagged: false,
+    showOnlyMissingSubCategory: false,
     showExceptional: null,
     dateFrom: '',
     dateTo: '',
@@ -98,6 +99,11 @@ const Tagging = () => {
       if (expense.main_category || expense.sub_category) return false
     }
 
+    // Show only expenses with main category but missing sub-category
+    if (filters.showOnlyMissingSubCategory) {
+      if (!expense.main_category || expense.sub_category) return false
+    }
+
     if (filters.showAutoTagged && expense.is_auto_tagged !== true) return false
 
     if (filters.showExceptional !== null && expense.is_exceptional !== filters.showExceptional) {
@@ -110,9 +116,24 @@ const Tagging = () => {
     return true
   })
 
-  const hasActiveFilters = Object.values(filters).some(
-    (value) => value !== '' && value !== false
-  )
+  const getActiveFilterCount = () => {
+    let count = 0
+    
+    if (filters.searchMerchant && filters.searchMerchant.trim() !== '') count++
+    if (filters.mainCategory && filters.mainCategory !== '') count++
+    if (filters.subCategory && filters.subCategory !== '') count++
+    if (filters.showUncategorized) count++
+    if (filters.showAutoTagged) count++
+    if (filters.showOnlyMissingSubCategory) count++
+    if (filters.showExceptional !== null) count++
+    if (filters.dateFrom && filters.dateFrom !== '') count++
+    if (filters.dateTo && filters.dateTo !== '') count++
+    
+    return count
+  }
+
+  const activeFilterCount = getActiveFilterCount()
+  const hasActiveFilters = activeFilterCount > 0
 
   const clearFilters = () => {
     setFilters({
@@ -121,6 +142,7 @@ const Tagging = () => {
       subCategory: '',
       showUncategorized: false,
       showAutoTagged: false,
+      showOnlyMissingSubCategory: false,
       showExceptional: null,
       dateFrom: '',
       dateTo: '',
@@ -307,23 +329,29 @@ const Tagging = () => {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors font-medium ${
                 hasActiveFilters
-                  ? 'border-teal bg-teal-50 text-teal'
-                  : 'border-gray-300 hover:bg-gray-50'
+                  ? 'border-teal-600 bg-teal-50 text-teal-700 shadow-sm'
+                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
               }`}
             >
               <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">Filters</span>
+              <span className="text-sm">Filters</span>
               {hasActiveFilters && (
-                <span className="px-2 py-0.5 bg-teal text-white text-xs rounded-full">
-                  Active
+                <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                  {activeFilterCount}
                 </span>
               )}
+              <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
           </div>
-          <div className="text-sm text-gray-600">
-            Showing {filteredExpenses.length} of {expenses.length} expenses
+          <div className="text-sm text-gray-600 flex items-center gap-2">
+            <span>Showing {filteredExpenses.length} of {expenses.length} expenses</span>
+            {filters.showOnlyMissingSubCategory && (
+              <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                Missing sub-category: {filteredExpenses.length}
+              </span>
+            )}
           </div>
         </div>
 
@@ -393,24 +421,47 @@ const Tagging = () => {
                 <option value="true">Exceptional only</option>
               </select>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="md:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.showUncategorized}
                   onChange={(e) => setFilters({ ...filters, showUncategorized: e.target.checked })}
-                  className="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
+                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                 />
-                <span className="text-sm text-gray-700">Uncategorized only</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Uncategorized only
+                </span>
+                <span className="text-xs text-gray-500">
+                  (No main category)
+                </span>
               </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.showOnlyMissingSubCategory}
+                  onChange={(e) => setFilters({ ...filters, showOnlyMissingSubCategory: e.target.checked })}
+                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Missing sub-category
+                </span>
+                <span className="text-xs text-gray-500">
+                  (Has main, no sub)
+                </span>
+              </label>
+              
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.showAutoTagged}
                   onChange={(e) => setFilters({ ...filters, showAutoTagged: e.target.checked })}
-                  className="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
+                  className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                 />
-                <span className="text-sm text-gray-700">Auto-tagged only</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Auto-tagged only
+                </span>
               </label>
             </div>
             {hasActiveFilters && (
