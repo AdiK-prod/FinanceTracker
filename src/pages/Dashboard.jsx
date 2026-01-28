@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload, X, Wallet, Receipt, TrendingUp, Star } from 'lucide-react'
+import { Upload, X, Wallet, Receipt, TrendingUp, Star, Plus } from 'lucide-react'
 import PieChartComponent from '../components/PieChart'
 import DateRangePicker from '../components/DateRangePicker'
 import UploadZone from '../components/UploadZone'
+import AddTransactionModal from '../components/AddTransactionModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDateDisplay, formatDateRangeDisplay, formatDateForDB } from '../utils/dateFormatters'
@@ -13,6 +14,7 @@ const Dashboard = () => {
   const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   const getCurrentMonthRange = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -146,6 +148,13 @@ const Dashboard = () => {
             onChange={setDateRange}
             baseDate={new Date()}
           />
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors"
+          >
+            <Plus size={20} />
+            Add Manually
+          </button>
           <button
             onClick={() => setIsUploadOpen(true)}
             className="btn-primary flex items-center gap-2"
@@ -377,6 +386,40 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Add Transaction Modal */}
+      <AddTransactionModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          // Refresh expenses by triggering a re-fetch
+          const fetchExpenses = async () => {
+            setIsLoading(true)
+            setError('')
+            const from = dateRange?.from ? formatDateForDB(dateRange.from) : null
+            const to = dateRange?.to ? formatDateForDB(dateRange.to) : null
+
+            let query = supabase
+              .from('expenses')
+              .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional')
+              .order('transaction_date', { ascending: false })
+
+            if (from) query = query.gte('transaction_date', from)
+            if (to) query = query.lte('transaction_date', to)
+            if (!includeExceptional) query = query.eq('is_exceptional', false)
+
+            const { data, error: fetchError } = await query
+            if (fetchError) {
+              setError(fetchError.message)
+              setExpenses([])
+            } else {
+              setExpenses(data || [])
+            }
+            setIsLoading(false)
+          }
+          fetchExpenses()
+        }}
+      />
     </div>
   )
 }

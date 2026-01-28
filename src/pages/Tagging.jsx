@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Tag, Search, Filter, X, Upload, ChevronDown } from 'lucide-react'
+import { Tag, Search, Filter, X, Upload, ChevronDown, Plus } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
 import UploadModal from '../components/UploadModal'
+import AddTransactionModal from '../components/AddTransactionModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -27,6 +28,7 @@ const Tagging = () => {
   })
   const [showFilters, setShowFilters] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const fetchExpenses = async () => {
     setIsLoading(true)
@@ -303,14 +305,23 @@ const Tagging = () => {
             </div>
           </div>
           
-          {/* Upload Button */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-          >
-            <Upload className="w-5 h-5" />
-            <span className="font-medium">Upload Expenses</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">Add Manually</span>
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
+            >
+              <Upload className="w-5 h-5" />
+              <span className="font-medium">Upload Expenses</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -511,6 +522,16 @@ const Tagging = () => {
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onUploadComplete={handleUploadComplete}
+      />
+
+      {/* Add Transaction Modal */}
+      <AddTransactionModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          fetchExpenses(); // Refresh data
+          fetchCategories(); // Refresh categories in case new ones were added
+        }}
       />
     </div>
   )
