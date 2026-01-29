@@ -159,7 +159,7 @@ const Detailed = () => {
 
     let query = supabase
       .from('expenses')
-      .select('*')
+      .select('*, transaction_type')
       .eq('user_id', user.id)
 
     if (dateRange?.from) {
@@ -195,10 +195,9 @@ const Detailed = () => {
       query = query.ilike('merchant', `%${filters.merchant}%`)
     }
 
-    // Select all fields including transaction_type for balance analysis
+    // Fetch data with increased row limit and sort by date
     // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data, error: fetchError } = await query
-      .select('*, transaction_type')
       .order('transaction_date', { ascending: false })
       .range(0, 9999)
 
