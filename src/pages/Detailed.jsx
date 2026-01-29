@@ -170,11 +170,11 @@ const Detailed = () => {
     }
 
     // Only apply category filter if not all categories selected
+    // NOTE: Category filtering is done CLIENT-SIDE to include income transactions
+    // Income has main_category = NULL, so database filtering would exclude them
     const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
     
-    if (!allCategoriesSelected && selectedMainCategories.length > 0) {
-      query = query.in('main_category', selectedMainCategories)
-    } else if (selectedMainCategories.length === 0) {
+    if (selectedMainCategories.length === 0) {
       // No categories selected = show nothing
       setExpenses([])
       setLoading(false)
@@ -210,14 +210,25 @@ const Detailed = () => {
       return
     }
 
-    // Client-side filter by sub-categories (more flexible than SQL)
+    // Client-side filter by categories (includes income which has NULL categories)
     let filtered = data || []
 
+    // Filter by main categories (but always include income transactions)
+    if (!allCategoriesSelected && selectedMainCategories.length > 0) {
+      filtered = filtered.filter((exp) =>
+        exp.transaction_type === 'income' || // Always include income
+        selectedMainCategories.includes(exp.main_category)
+      )
+    }
+
+    // Filter by sub-categories (but always include income transactions)
     if (selectedSubCategories.length > 0) {
       const allPossibleSubs = Object.values(categories.subs).flat()
       if (selectedSubCategories.length < allPossibleSubs.length) {
         filtered = filtered.filter((exp) =>
-          !exp.sub_category || selectedSubCategories.includes(exp.sub_category)
+          exp.transaction_type === 'income' || // Always include income
+          !exp.sub_category ||
+          selectedSubCategories.includes(exp.sub_category)
         )
       }
     }
