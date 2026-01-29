@@ -6,6 +6,7 @@ import UploadModal from '../components/UploadModal'
 import AddTransactionModal from '../components/AddTransactionModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { fetchAllExpenses } from '../utils/fetchAllRows'
 
 const Tagging = () => {
   const navigate = useNavigate()
@@ -35,21 +36,27 @@ const Tagging = () => {
   const [successToast, setSuccessToast] = useState(null)
 
   const fetchExpenses = async () => {
+    if (!user) return
     setIsLoading(true)
     setError('')
-    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-    const { data, error: fetchError } = await supabase
-      .from('expenses')
-      .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional, transaction_type, upload_id')
-      .order('main_category', { ascending: true, nullsFirst: true })
-      .order('transaction_date', { ascending: false })
-      .range(0, 9999)
-
-    if (fetchError) {
-      setError(fetchError.message)
+    try {
+      // Use paginated fetch to bypass Supabase 1000 row limit
+      const data = await fetchAllExpenses(supabase, user.id, {})
+      // Sort by main_category then transaction_date (same as before)
+      const sorted = (data || []).sort((a, b) => {
+        const catA = a.main_category ?? ''
+        const catB = b.main_category ?? ''
+        if (catA !== catB) return catA.localeCompare(catB)
+        return new Date(b.transaction_date) - new Date(a.transaction_date)
+      })
+      setExpenses(sorted)
+      if (data?.length > 0) {
+        console.log(`✅ Tagging fetched ${data.length} transactions (paginated)`)
+      }
+    } catch (fetchError) {
+      console.error('Error fetching expenses:', fetchError)
+      setError(fetchError.message || 'Failed to fetch expenses')
       setExpenses([])
-    } else {
-      setExpenses(data || [])
     }
     setIsLoading(false)
   }
@@ -83,8 +90,8 @@ const Tagging = () => {
   }
 
   useEffect(() => {
-    fetchExpenses()
-  }, [])
+    if (user) fetchExpenses()
+  }, [user])
 
   useEffect(() => {
     fetchCategories()
