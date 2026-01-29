@@ -18,6 +18,7 @@ import { BarChart3, Download, LineChart as LineChartIcon, PieChart as PieChartIc
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import DateRangePicker from '../components/DateRangePicker'
+import { fetchAllExpenses } from '../utils/fetchAllRows'
 import { formatDateDisplay, formatDateRangeDisplay, formatMonthYear, formatDateForDB } from '../utils/dateFormatters'
 
 const CHART_COLORS = [
@@ -157,18 +158,6 @@ const Detailed = () => {
     }
     setError('')
 
-    let query = supabase
-      .from('expenses')
-      .select('*, transaction_type')
-      .eq('user_id', user.id)
-
-    if (dateRange?.from) {
-      query = query.gte('transaction_date', formatDateForDB(dateRange.from))
-    }
-    if (dateRange?.to) {
-      query = query.lte('transaction_date', formatDateForDB(dateRange.to))
-    }
-
     // Only apply category filter if not all categories selected
     // NOTE: Category filtering is done CLIENT-SIDE to include income transactions
     // Income has main_category = NULL, so database filtering would exclude them
@@ -182,59 +171,52 @@ const Detailed = () => {
       return
     }
 
-    if (filters.minAmount) {
-      query = query.gte('amount', parseFloat(filters.minAmount))
-    }
-    if (filters.maxAmount) {
-      query = query.lte('amount', parseFloat(filters.maxAmount))
-    }
-    if (!filters.includeExceptional) {
-      query = query.eq('is_exceptional', false)
-    }
-    if (filters.merchant) {
-      query = query.ilike('merchant', `%${filters.merchant}%`)
-    }
+    // Use paginated fetch to bypass Supabase 1000 row limit
+    try {
+      const data = await fetchAllExpenses(supabase, user.id, {
+        dateFrom: dateRange?.from ? formatDateForDB(dateRange.from) : null,
+        dateTo: dateRange?.to ? formatDateForDB(dateRange.to) : null,
+        includeExceptional: filters.includeExceptional,
+        minAmount: filters.minAmount ? parseFloat(filters.minAmount) : null,
+        maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : null,
+        merchant: filters.merchant || null
+      })
 
-    // Fetch data with increased row limit and sort by date
-    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-    const { data, error: fetchError } = await query
-      .order('transaction_date', { ascending: false })
-      .range(0, 9999)
+      console.log(`✅ Fetched ${data.length} total transactions (paginated)`)
+      
+      // Client-side filter by categories (includes income which has NULL categories)
+      let filtered = data || []
 
-    if (fetchError) {
-      setError(fetchError.message)
+      // Filter by main categories (but always include income transactions)
+      if (!allCategoriesSelected && selectedMainCategories.length > 0) {
+        filtered = filtered.filter((exp) =>
+          exp.transaction_type === 'income' || // Always include income
+          selectedMainCategories.includes(exp.main_category)
+        )
+      }
+
+      // Filter by sub-categories (but always include income transactions)
+      if (selectedSubCategories.length > 0) {
+        const allPossibleSubs = Object.values(categories.subs).flat()
+        if (selectedSubCategories.length < allPossibleSubs.length) {
+          filtered = filtered.filter((exp) =>
+            exp.transaction_type === 'income' || // Always include income
+            !exp.sub_category ||
+            selectedSubCategories.includes(exp.sub_category)
+          )
+        }
+      }
+
+      setExpenses(filtered)
+      setLoading(false)
+      setIsRefreshing(false)
+    } catch (fetchError) {
+      console.error('Error fetching expenses:', fetchError)
+      setError(fetchError.message || 'Failed to fetch expenses')
       setExpenses([])
       setLoading(false)
       setIsRefreshing(false)
-      return
     }
-
-    // Client-side filter by categories (includes income which has NULL categories)
-    let filtered = data || []
-
-    // Filter by main categories (but always include income transactions)
-    if (!allCategoriesSelected && selectedMainCategories.length > 0) {
-      filtered = filtered.filter((exp) =>
-        exp.transaction_type === 'income' || // Always include income
-        selectedMainCategories.includes(exp.main_category)
-      )
-    }
-
-    // Filter by sub-categories (but always include income transactions)
-    if (selectedSubCategories.length > 0) {
-      const allPossibleSubs = Object.values(categories.subs).flat()
-      if (selectedSubCategories.length < allPossibleSubs.length) {
-        filtered = filtered.filter((exp) =>
-          exp.transaction_type === 'income' || // Always include income
-          !exp.sub_category ||
-          selectedSubCategories.includes(exp.sub_category)
-        )
-      }
-    }
-
-    setExpenses(filtered)
-    setLoading(false)
-    setIsRefreshing(false)
   }
 
   const formatAmount = (amount) =>

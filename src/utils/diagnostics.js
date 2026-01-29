@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllExpenses } from './fetchAllRows'
 
 export async function diagnoseIncomeData() {
   const { data: user } = await supabase.auth.getUser()
@@ -8,17 +9,40 @@ export async function diagnoseIncomeData() {
     return null
   }
   
-  // Get ALL income transactions (no filters)
-  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-  const { data: allIncome, error } = await supabase
-    .from('expenses')
-    .select('*')
-    .eq('user_id', user.user.id)
-    .eq('transaction_type', 'income')
-    .order('transaction_date', { ascending: true })
-    .range(0, 9999)
-  
-  if (error) {
+  // Get ALL income transactions (no filters) using pagination
+  let allIncome = []
+  try {
+    let from = 0
+    const pageSize = 1000
+    let hasMore = true
+    
+    while (hasMore) {
+      const to = from + pageSize - 1
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .eq('transaction_type', 'income')
+        .order('transaction_date', { ascending: true })
+        .range(from, to)
+      
+      if (error) {
+        console.error('Error fetching income:', error)
+        return null
+      }
+      
+      if (data && data.length > 0) {
+        allIncome = [...allIncome, ...data]
+        if (data.length < pageSize) {
+          hasMore = false
+        } else {
+          from += pageSize
+        }
+      } else {
+        hasMore = false
+      }
+    }
+  } catch (error) {
     console.error('Error fetching income:', error)
     return null
   }
@@ -137,13 +161,35 @@ export async function diagnoseIncomeData() {
   console.log('')
   console.log('=== EXPENSE CHECK (for comparison) ===')
   
-  // Quick check on expenses
-  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-  const { data: allExpenses } = await supabase
-    .from('expenses')
-    .select('transaction_type')
-    .eq('user_id', user.user.id)
-    .range(0, 9999)
+  // Quick check on expenses using pagination
+  let allExpenses = []
+  try {
+    let from = 0
+    const pageSize = 1000
+    let hasMore = true
+    
+    while (hasMore) {
+      const to = from + pageSize - 1
+      const { data } = await supabase
+        .from('expenses')
+        .select('transaction_type')
+        .eq('user_id', user.user.id)
+        .range(from, to)
+      
+      if (data && data.length > 0) {
+        allExpenses = [...allExpenses, ...data]
+        if (data.length < pageSize) {
+          hasMore = false
+        } else {
+          from += pageSize
+        }
+      } else {
+        hasMore = false
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching expense count:', error)
+  }
   
   const expenseCount = allExpenses?.filter(e => e.transaction_type === 'expense').length || 0
   const nullTypeCount = allExpenses?.filter(e => !e.transaction_type || e.transaction_type === null).length || 0
@@ -183,46 +229,43 @@ export async function diagnoseExpenseQuery(dateRange) {
   console.log('=== EXPENSE QUERY DIAGNOSTIC ===')
   console.log('Testing query with date range:', dateRange)
   
-  // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-  const { data, error } = await supabase
-    .from('expenses')
-    .select('*, transaction_type')
-    .eq('user_id', user.user.id)
-    .gte('transaction_date', dateRange.from.toISOString().split('T')[0])
-    .lte('transaction_date', dateRange.to.toISOString().split('T')[0])
-    .order('transaction_date', { ascending: false })
-    .range(0, 9999)
-  
-  if (error) {
+  try {
+    // Use paginated fetch to bypass Supabase 1000 row limit
+    const data = await fetchAllExpenses(supabase, user.user.id, {
+      dateFrom: dateRange.from.toISOString().split('T')[0],
+      dateTo: dateRange.to.toISOString().split('T')[0],
+      includeExceptional: true
+    })
+    
+    console.log(`Total transactions returned: ${data.length} (paginated fetch)`)
+    
+    const income = data.filter(e => e.transaction_type === 'income')
+    const expenses = data.filter(e => e.transaction_type === 'expense')
+    const nullType = data.filter(e => !e.transaction_type)
+    
+    console.log(`- Income: ${income.length}`)
+    console.log(`- Expenses: ${expenses.length}`)
+    console.log(`- NULL type: ${nullType.length}`)
+    
+    if (income.length > 0) {
+      console.log('')
+      console.log('Income transactions found:')
+      income.forEach(i => {
+        console.log(`  ${i.transaction_date}: ${i.merchant} ₪${i.amount.toFixed(2)}`)
+      })
+    }
+    
+    console.log('=== END QUERY DIAGNOSTIC ===')
+    
+    return {
+      total: data.length,
+      income: income.length,
+      expenses: expenses.length,
+      nullType: nullType.length,
+      data
+    }
+  } catch (error) {
     console.error('Query error:', error)
     return null
-  }
-  
-  console.log(`Total transactions returned: ${data.length}`)
-  
-  const income = data.filter(e => e.transaction_type === 'income')
-  const expenses = data.filter(e => e.transaction_type === 'expense')
-  const nullType = data.filter(e => !e.transaction_type)
-  
-  console.log(`- Income: ${income.length}`)
-  console.log(`- Expenses: ${expenses.length}`)
-  console.log(`- NULL type: ${nullType.length}`)
-  
-  if (income.length > 0) {
-    console.log('')
-    console.log('Income transactions found:')
-    income.forEach(i => {
-      console.log(`  ${i.transaction_date}: ${i.merchant} ₪${i.amount.toFixed(2)}`)
-    })
-  }
-  
-  console.log('=== END QUERY DIAGNOSTIC ===')
-  
-  return {
-    total: data.length,
-    income: income.length,
-    expenses: expenses.length,
-    nullType: nullType.length,
-    data
   }
 }
