@@ -334,6 +334,9 @@ const ExpenseTable = ({
                 </th>
                 <SortableHeader columnKey="main_category">Main Category</SortableHeader>
                 <SortableHeader columnKey="sub_category">Sub Category</SortableHeader>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Upload
+                </th>
                 <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Exceptional
                 </th>
@@ -348,13 +351,13 @@ const ExpenseTable = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12">
+                  <td colSpan={11} className="px-6 py-12">
                     <div className="h-8 w-full rounded bg-gray-100 animate-pulse" />
                   </td>
                 </tr>
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12">
+                  <td colSpan={11} className="px-6 py-12">
                     <p className="text-sm text-gray-500">No expenses found.</p>
                   </td>
                 </tr>
@@ -496,6 +499,9 @@ const ExpenseTable = ({
                           ))}
                         </select>
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-[140px] truncate" title={expense.upload_id || ''}>
+                      {expense.upload_id || '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button

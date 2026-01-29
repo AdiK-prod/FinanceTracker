@@ -750,7 +750,8 @@ const UploadZone = ({ onConfirmUpload }) => {
     }
 
     setIsUploading(true)
-    const success = await onConfirmUpload(toImport)
+    // Pass file name as upload_id so batches can be recognized and reverted
+    const success = await onConfirmUpload(toImport, fileName || null)
     setIsUploading(false)
     if (success) {
       await saveMappingTemplate()

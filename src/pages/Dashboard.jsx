@@ -145,7 +145,7 @@ Check browser console (F12) for full details.
     navigate('/detailed', { state: { category: categoryName } })
   }
 
-  const handleUpload = async (rows) => {
+  const handleUpload = async (rows, uploadId = null) => {
     if (!user) return
     setError('')
 
@@ -159,6 +159,8 @@ Check browser console (F12) for full details.
       is_exceptional: row.is_exceptional || false,
       currency: 'ILS',
       user_id: user.id,
+      transaction_type: 'expense',
+      upload_id: uploadId || null,
     }))
 
     const { error: insertError } = await supabase.from('expenses').insert(payload)

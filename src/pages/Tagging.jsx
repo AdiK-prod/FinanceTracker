@@ -27,6 +27,7 @@ const Tagging = () => {
     showOnlyIncome: false,
     dateFrom: '',
     dateTo: '',
+    uploadId: '',
   })
   const [showFilters, setShowFilters] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -39,7 +40,7 @@ const Tagging = () => {
     // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
     const { data, error: fetchError } = await supabase
       .from('expenses')
-      .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional, transaction_type')
+      .select('id, transaction_date, merchant, amount, main_category, sub_category, is_auto_tagged, is_exceptional, transaction_type, upload_id')
       .order('main_category', { ascending: true, nullsFirst: true })
       .order('transaction_date', { ascending: false })
       .range(0, 9999)
@@ -124,8 +125,12 @@ const Tagging = () => {
     if (filters.dateFrom && expense.transaction_date < filters.dateFrom) return false
     if (filters.dateTo && expense.transaction_date > filters.dateTo) return false
 
+    if (filters.uploadId && expense.upload_id !== filters.uploadId) return false
+
     return true
   })
+
+  const distinctUploadIds = [...new Set(expenses.map((e) => e.upload_id).filter(Boolean))].sort()
 
   const getActiveFilterCount = () => {
     let count = 0
@@ -141,6 +146,7 @@ const Tagging = () => {
     if (filters.showOnlyIncome) count++
     if (filters.dateFrom && filters.dateFrom !== '') count++
     if (filters.dateTo && filters.dateTo !== '') count++
+    if (filters.uploadId && filters.uploadId !== '') count++
     
     return count
   }
@@ -161,7 +167,31 @@ const Tagging = () => {
       showOnlyIncome: false,
       dateFrom: '',
       dateTo: '',
+      uploadId: '',
     })
+  }
+
+  const handleDeleteByUploadId = async (uploadIdToDelete) => {
+    if (!uploadIdToDelete) return
+    const count = expenses.filter((e) => e.upload_id === uploadIdToDelete).length
+    const confirmed = window.confirm(
+      `Delete all ${count} transaction${count !== 1 ? 's' : ''} from upload "${uploadIdToDelete}"?\n\nThis cannot be undone.`
+    )
+    if (!confirmed) return
+
+    const { error: deleteError } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('upload_id', uploadIdToDelete)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+    setExpenses((prev) => prev.filter((e) => e.upload_id !== uploadIdToDelete))
+    setFilters((f) => ({ ...f, uploadId: '' }))
+    await fetchCategories()
   }
 
   const handleUpdateExpense = async (id, updates) => {
@@ -272,7 +302,7 @@ const Tagging = () => {
     setExpenses((prev) => prev.filter((exp) => !ids.includes(exp.id)))
   }
 
-  const handleUploadComplete = async (transactions) => {
+  const handleUploadComplete = async (transactions, uploadId = null) => {
     try {
       const expensesToInsert = transactions.map((transaction) => ({
         user_id: user.id,
@@ -284,6 +314,8 @@ const Tagging = () => {
         sub_category: transaction.sub_category || null,
         is_auto_tagged: transaction.is_auto_tagged || false,
         is_exceptional: false,
+        transaction_type: 'expense',
+        upload_id: uploadId || null,
       }))
 
       const { error: insertError } = await supabase
@@ -472,6 +504,32 @@ const Tagging = () => {
                 <option value="true">Exceptional only</option>
               </select>
             </div>
+            {distinctUploadIds.length > 0 && (
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-[180px]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload batch</label>
+                  <select
+                    value={filters.uploadId}
+                    onChange={(e) => setFilters({ ...filters, uploadId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal"
+                  >
+                    <option value="">All uploads</option>
+                    {distinctUploadIds.map((uid) => (
+                      <option key={uid} value={uid}>{uid}</option>
+                    ))}
+                  </select>
+                </div>
+                {filters.uploadId && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteByUploadId(filters.uploadId)}
+                    className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                  >
+                    Delete this upload
+                  </button>
+                )}
+              </div>
+            )}
             <div className="md:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
