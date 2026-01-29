@@ -133,6 +133,7 @@ const parseFlexibleDate = (dateValue) => {
     return dateStr
   }
 
+  // Parse DD/MM/YYYY or DD-MM-YYYY format (Israeli/European format)
   const dmyMatch = dateStr.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/)
   if (dmyMatch) {
     let [, firstNum, secondNum, year] = dmyMatch
@@ -142,14 +143,28 @@ const parseFlexibleDate = (dateValue) => {
       year = yearNum <= 50 ? `20${year}` : `19${year}`
     }
 
+    // ALWAYS assume DD/MM/YYYY format (Israeli locale)
+    // Only swap if it's definitively wrong (first number > 12)
     let day = firstNum
     let month = secondNum
-    if (parseInt(firstNum, 10) > 12) {
+    
+    const firstNumInt = parseInt(firstNum, 10)
+    const secondNumInt = parseInt(secondNum, 10)
+    
+    // If first number > 12, it must be day (DD/MM/YYYY)
+    if (firstNumInt > 12 && secondNumInt <= 12) {
       day = firstNum
       month = secondNum
-    } else if (parseInt(secondNum, 10) > 12) {
+    }
+    // If second number > 12, it must be month is wrong, so swap (MM/DD/YYYY -> DD/MM/YYYY)
+    else if (secondNumInt > 12 && firstNumInt <= 12) {
       day = secondNum
       month = firstNum
+    }
+    // If both ≤12, assume DD/MM/YYYY (Israeli format)
+    else {
+      day = firstNum
+      month = secondNum
     }
 
     const dayNum = parseInt(day, 10)
@@ -176,15 +191,20 @@ const parseFlexibleDate = (dateValue) => {
     return isValidDateString(result) ? result : null
   }
 
+  // Last resort: try native Date parsing (WARNING: may use MM/DD/YYYY format)
+  // This should rarely be reached if the above patterns are comprehensive
+  console.warn('Date parsing fallback used for:', dateStr, '- may produce incorrect results')
   const parsed = new Date(dateStr)
   if (!Number.isNaN(parsed.getTime())) {
     const year = parsed.getFullYear()
     const month = String(parsed.getMonth() + 1).padStart(2, '0')
     const day = String(parsed.getDate()).padStart(2, '0')
     const result = `${year}-${month}-${day}`
+    console.warn('Fallback parsed as:', result)
     return isValidDateString(result) ? result : null
   }
 
+  console.warn('Failed to parse date:', dateStr)
   return null
 }
 
