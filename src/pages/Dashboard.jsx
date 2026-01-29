@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDateDisplay, formatDateRangeDisplay, formatDateForDB } from '../utils/dateFormatters'
 import { diagnoseIncomeData, diagnoseExpenseQuery } from '../utils/diagnostics'
+import { fetchAllExpenses } from '../utils/fetchAllRows'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -67,33 +68,34 @@ Check browser console (F12) for full details.
 
   useEffect(() => {
     const fetchExpenses = async () => {
+      if (!user) return
+      
       setIsLoading(true)
       setError('')
       const from = dateRange?.from ? formatDateForDB(dateRange.from) : null
       const to = dateRange?.to ? formatDateForDB(dateRange.to) : null
 
-      let query = supabase
-        .from('expenses')
-        .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional, transaction_type')
-        .order('transaction_date', { ascending: false })
-
-      if (from) query = query.gte('transaction_date', from)
-      if (to) query = query.lte('transaction_date', to)
-      if (!includeExceptional) query = query.eq('is_exceptional', false)
-
-      // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-      const { data, error: fetchError } = await query.range(0, 9999)
-      if (fetchError) {
-        setError(fetchError.message)
-        setExpenses([])
-      } else {
+      try {
+        // Use paginated fetch to bypass Supabase 1000 row limit
+        const data = await fetchAllExpenses(supabase, user.id, {
+          dateFrom: from,
+          dateTo: to,
+          includeExceptional: includeExceptional
+        })
+        
+        console.log(`✅ Dashboard fetched ${data.length} total transactions (paginated)`)
         setExpenses(data || [])
+      } catch (fetchError) {
+        console.error('Error fetching expenses:', fetchError)
+        setError(fetchError.message || 'Failed to fetch expenses')
+        setExpenses([])
       }
+      
       setIsLoading(false)
     }
 
     fetchExpenses()
-  }, [dateRange, includeExceptional])
+  }, [user, dateRange, includeExceptional])
 
   // Calculate income, expenses, and net balance
   const incomeTotal = useMemo(() => {
@@ -550,38 +552,36 @@ Check browser console (F12) for full details.
       <AddTransactionModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSuccess={(counts) => {
+        onSuccess={async (counts) => {
           // Show success toast
           setSuccessToast(counts)
           setTimeout(() => setSuccessToast(null), 5000)
           
           // Refresh expenses by triggering a re-fetch
-          const fetchExpenses = async () => {
-            setIsLoading(true)
-            setError('')
-            const from = dateRange?.from ? formatDateForDB(dateRange.from) : null
-            const to = dateRange?.to ? formatDateForDB(dateRange.to) : null
+          if (!user) return
+          
+          setIsLoading(true)
+          setError('')
+          const from = dateRange?.from ? formatDateForDB(dateRange.from) : null
+          const to = dateRange?.to ? formatDateForDB(dateRange.to) : null
 
-            let query = supabase
-              .from('expenses')
-              .select('id, transaction_date, merchant, amount, main_category, sub_category, user_id, is_auto_tagged, is_exceptional, transaction_type')
-              .order('transaction_date', { ascending: false })
-
-            if (from) query = query.gte('transaction_date', from)
-            if (to) query = query.lte('transaction_date', to)
-            if (!includeExceptional) query = query.eq('is_exceptional', false)
-
-            // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-            const { data, error: fetchError } = await query.range(0, 9999)
-            if (fetchError) {
-              setError(fetchError.message)
-              setExpenses([])
-            } else {
-              setExpenses(data || [])
-            }
-            setIsLoading(false)
+          try {
+            // Use paginated fetch to bypass Supabase 1000 row limit
+            const data = await fetchAllExpenses(supabase, user.id, {
+              dateFrom: from,
+              dateTo: to,
+              includeExceptional: includeExceptional
+            })
+            
+            console.log(`✅ Dashboard refreshed ${data.length} total transactions (paginated)`)
+            setExpenses(data || [])
+          } catch (fetchError) {
+            console.error('Error refreshing expenses:', fetchError)
+            setError(fetchError.message || 'Failed to refresh expenses')
+            setExpenses([])
           }
-          fetchExpenses()
+          
+          setIsLoading(false)
         }}
       />
     </div>
