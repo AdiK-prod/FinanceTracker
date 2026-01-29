@@ -185,90 +185,123 @@ const ExpenseTable = ({
     <div className="space-y-4">
       {/* Bulk Actions */}
       {selectedRows.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-sm">
-          <span className="text-blue-800 font-medium">
-            {selectedRows.size} row{selectedRows.size > 1 ? 's' : ''} selected
-          </span>
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <select
-              value={bulkMainCategory}
-              onChange={(e) => {
-                setBulkMainCategory(e.target.value)
-                setBulkSubCategory('')
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
-            >
-              <option value="">Bulk set Main Category</option>
-              {mainCategories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <select
-              value={bulkSubCategory}
-              onChange={(e) => setBulkSubCategory(e.target.value)}
-              disabled={!bulkMainCategory}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white disabled:bg-gray-100"
-            >
-              <option value="">Bulk set Sub Category</option>
-              {(subCategories[bulkMainCategory] || []).map((sub) => (
-                <option key={sub} value={sub}>{sub}</option>
-              ))}
-            </select>
-            <button
-              onClick={handleApplyBulkCategories}
-              disabled={!bulkMainCategory}
-              className="btn-primary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Apply to {selectedRows.size}
-            </button>
-            
-            {/* Type Conversion Buttons */}
-            <div className="h-8 w-px bg-gray-300"></div>
-            <button
-              onClick={() => handleBulkTypeConversion('expense')}
-              className="px-3 py-2 text-sm border-2 border-red-600 text-red-700 rounded-md hover:bg-red-50 font-semibold"
-              title="Convert selected transactions to expenses"
-            >
-              💸 Mark as Expense
-            </button>
-            <button
-              onClick={() => handleBulkTypeConversion('income')}
-              className="px-3 py-2 text-sm border-2 border-green-600 text-green-700 rounded-md hover:bg-green-50 font-semibold"
-              title="Convert selected transactions to income"
-            >
-              💰 Mark as Income
-            </button>
-            
-            <div className="h-8 w-px bg-gray-300"></div>
-            <button
-              onClick={() => handleBulkCategoryChange('is_exceptional', true)}
-              className="px-3 py-2 text-sm border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50"
-            >
-              Mark Exceptional
-            </button>
-            <button
-              onClick={() => handleBulkCategoryChange('is_exceptional', false)}
-              className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-            >
-              Mark Regular
-            </button>
-            <button
-              onClick={() => onBulkDelete?.(Array.from(selectedRows))}
-              className="px-3 py-2 text-sm border border-red-300 text-red-700 rounded-md hover:bg-red-50 flex items-center gap-1"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected
-            </button>
-            <button
-              onClick={() => {
-                setSelectedRows(new Set())
-                setBulkMainCategory('')
-                setBulkSubCategory('')
-              }}
-              className="btn-secondary text-sm"
-            >
-              Clear Selection
-            </button>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 shadow-md">
+          <div className="flex flex-col gap-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                  {selectedRows.size}
+                </div>
+                <span className="text-blue-900 font-semibold text-base">
+                  {selectedRows.size} transaction{selectedRows.size > 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedRows(new Set())
+                  setBulkMainCategory('')
+                  setBulkSubCategory('')
+                }}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-white/60 rounded-md transition-colors font-medium"
+              >
+                ✕ Clear
+              </button>
+            </div>
+
+            {/* Actions Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Category Assignment */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  📁 Assign Categories
+                </div>
+                <div className="space-y-2">
+                  <select
+                    value={bulkMainCategory}
+                    onChange={(e) => {
+                      setBulkMainCategory(e.target.value)
+                      setBulkSubCategory('')
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Main Category</option>
+                    {mainCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={bulkSubCategory}
+                    onChange={(e) => setBulkSubCategory(e.target.value)}
+                    disabled={!bulkMainCategory}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Sub Category</option>
+                    {(subCategories[bulkMainCategory] || []).map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleApplyBulkCategories}
+                    disabled={!bulkMainCategory}
+                    className="w-full px-4 py-2 bg-teal text-white rounded-md hover:bg-teal/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors"
+                  >
+                    Apply Categories
+                  </button>
+                </div>
+              </div>
+
+              {/* Transaction Type */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  💰 Transaction Type
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleBulkTypeConversion('expense')}
+                    className="w-full px-4 py-2.5 bg-red-50 border-2 border-red-500 text-red-700 rounded-md hover:bg-red-100 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                    title="Convert selected transactions to expenses"
+                  >
+                    💸 Mark as Expense
+                  </button>
+                  <button
+                    onClick={() => handleBulkTypeConversion('income')}
+                    className="w-full px-4 py-2.5 bg-green-50 border-2 border-green-500 text-green-700 rounded-md hover:bg-green-100 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                    title="Convert selected transactions to income"
+                  >
+                    💰 Mark as Income
+                  </button>
+                </div>
+              </div>
+
+              {/* Other Actions */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  ⚡ Quick Actions
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleBulkCategoryChange('is_exceptional', true)}
+                    className="w-full px-4 py-2 bg-orange-50 border border-orange-400 text-orange-700 rounded-md hover:bg-orange-100 text-sm font-medium transition-colors"
+                  >
+                    ⭐ Mark Exceptional
+                  </button>
+                  <button
+                    onClick={() => handleBulkCategoryChange('is_exceptional', false)}
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-400 text-gray-700 rounded-md hover:bg-gray-100 text-sm font-medium transition-colors"
+                  >
+                    ✓ Mark Regular
+                  </button>
+                  <button
+                    onClick={() => onBulkDelete?.(Array.from(selectedRows))}
+                    className="w-full px-4 py-2 bg-red-50 border border-red-400 text-red-700 rounded-md hover:bg-red-100 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Selected
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
