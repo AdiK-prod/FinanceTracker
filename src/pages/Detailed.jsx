@@ -77,6 +77,7 @@ const Detailed = () => {
     maxAmount: '',
     includeExceptional: true,
     merchant: '',
+    excludeUncategorized: false,
   })
 
   const [selectedMainCategories, setSelectedMainCategories] = useState([])
@@ -207,6 +208,13 @@ const Detailed = () => {
         }
       }
 
+      // Exclude uncategorized expenses (keep income; expenses must have main_category)
+      if (filters.excludeUncategorized) {
+        filtered = filtered.filter((exp) =>
+          exp.transaction_type === 'income' || (exp.main_category != null && exp.main_category !== '')
+        )
+      }
+
       setExpenses(filtered)
       setLoading(false)
       setIsRefreshing(false)
@@ -276,6 +284,7 @@ const Detailed = () => {
     if (filters.maxAmount && filters.maxAmount !== '') count++
     if (filters.merchant && filters.merchant.trim() !== '') count++
     if (!filters.includeExceptional) count++
+    if (filters.excludeUncategorized) count++
     
     return count
   }
@@ -283,14 +292,20 @@ const Detailed = () => {
   const activeFilterCount = getActiveFilterCount()
   const hasActiveFilters = activeFilterCount > 0
 
-  const totalSpending = useMemo(
-    () => expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0),
+  // Category Breakdown shows only expenses (exclude income)
+  const expensesForBreakdown = useMemo(
+    () => expenses.filter((exp) => exp.transaction_type !== 'income'),
     [expenses]
   )
 
+  const totalSpending = useMemo(
+    () => expensesForBreakdown.reduce((sum, exp) => sum + (exp.amount || 0), 0),
+    [expensesForBreakdown]
+  )
+
   const averageExpense = useMemo(
-    () => (expenses.length > 0 ? totalSpending / expenses.length : 0),
-    [expenses, totalSpending]
+    () => (expensesForBreakdown.length > 0 ? totalSpending / expensesForBreakdown.length : 0),
+    [expensesForBreakdown, totalSpending]
   )
 
   const getGroupKey = (expense, groupType) => {
@@ -320,13 +335,14 @@ const Detailed = () => {
   }
 
   const aggregatedData = useMemo(() => {
-    if (!expenses.length) return []
+    // Category Breakdown: use only expenses (income excluded)
+    if (!expensesForBreakdown.length) return []
     
     // If secondary grouping is enabled
     if (secondaryGroupBy) {
       const primaryGroups = {}
       
-      expenses.forEach((expense) => {
+      expensesForBreakdown.forEach((expense) => {
         const primaryKey = getGroupKey(expense, groupBy)
         const secondaryKey = getGroupKey(expense, secondaryGroupBy)
         
@@ -386,7 +402,7 @@ const Detailed = () => {
     // Standard single-level grouping
     const grouped = {}
 
-    expenses.forEach((expense) => {
+    expensesForBreakdown.forEach((expense) => {
       const key = getGroupKey(expense, groupBy)
       const label = getGroupLabel(key, groupBy)
 
@@ -417,7 +433,7 @@ const Detailed = () => {
       total: Math.round(item.total * 100) / 100,
       percentage: totalSpending ? Math.round((item.total / totalSpending) * 100) : 0,
     }))
-  }, [expenses, groupBy, secondaryGroupBy, totalSpending])
+  }, [expensesForBreakdown, groupBy, secondaryGroupBy, totalSpending])
 
   // Calculate monthly balance data for Balance Analysis view
   const monthlyBalanceData = useMemo(() => {
@@ -852,6 +868,17 @@ const Detailed = () => {
               <span className="text-sm text-gray-700">Include exceptional</span>
             </label>
           </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.excludeUncategorized}
+                onChange={(e) => setFilters({ ...filters, excludeUncategorized: e.target.checked })}
+                className="w-4 h-4 text-teal border-gray-300 rounded"
+              />
+              <span className="text-sm text-gray-700">Exclude uncategorized</span>
+            </label>
+          </div>
         </div>
 
         {/* Only show breakdown controls when in breakdown view */}
@@ -953,8 +980,8 @@ const Detailed = () => {
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-1">Total Transactions</div>
-          <div className="text-3xl font-bold text-gray-900">{expenses.length}</div>
+          <div className="text-sm text-gray-600 mb-1">Expense Transactions</div>
+          <div className="text-3xl font-bold text-gray-900">{expensesForBreakdown.length}</div>
           <div className="text-sm text-gray-500 mt-1">
             {aggregatedData.length} unique {groupBy.replace('_', ' ')}s
           </div>
