@@ -292,9 +292,14 @@ const Detailed = () => {
   const activeFilterCount = getActiveFilterCount()
   const hasActiveFilters = activeFilterCount > 0
 
-  // Category Breakdown shows only expenses (exclude income)
+  // Category Breakdown: only expenses (exclude income; include legacy null as expense)
+  const isExpense = (exp) => {
+    const t = exp.transaction_type
+    if (t == null || t === '') return true
+    return String(t).toLowerCase() === 'expense'
+  }
   const expensesForBreakdown = useMemo(
-    () => expenses.filter((exp) => exp.transaction_type !== 'income'),
+    () => expenses.filter(isExpense),
     [expenses]
   )
 
