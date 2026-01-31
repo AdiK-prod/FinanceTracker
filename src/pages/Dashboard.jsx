@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Upload, X, Wallet, Receipt, TrendingUp, Star, Plus, Search } from 'lucide-react'
 import PieChartComponent from '../components/PieChart'
 import DateRangePicker from '../components/DateRangePicker'
@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatDateDisplay, formatDateRangeDisplay, formatDateForDB } from '../utils/dateFormatters'
 import { diagnoseIncomeData, diagnoseExpenseQuery } from '../utils/diagnostics'
 import { fetchAllExpenses } from '../utils/fetchAllRows'
+import { parseDashboardStateFromUrl, buildDashboardUrlParams } from '../utils/viewStateUrl'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -33,6 +34,25 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [includeExceptional, setIncludeExceptional] = useState(true)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const hasRestoredDashboardFromUrl = useRef(false)
+
+  useEffect(() => {
+    if (hasRestoredDashboardFromUrl.current) return
+    hasRestoredDashboardFromUrl.current = true
+    const restored = parseDashboardStateFromUrl(searchParams)
+    if (!restored) return
+    setDateRange(restored.dateRange)
+    setIncludeExceptional(restored.includeExceptional)
+  }, [])
+
+  useEffect(() => {
+    const params = buildDashboardUrlParams({ dateRange, includeExceptional })
+    const str = params.toString()
+    if (str === searchParams.toString()) return
+    setSearchParams(params, { replace: true })
+  }, [dateRange, includeExceptional])
 
   // Diagnostic function
   const runDiagnostics = async () => {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Tag, Search, Filter, X, Upload, ChevronDown, Plus } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
 import UploadModal from '../components/UploadModal'
@@ -7,6 +7,7 @@ import AddTransactionModal from '../components/AddTransactionModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchAllExpenses } from '../utils/fetchAllRows'
+import { parseTaggingStateFromUrl, buildTaggingUrlParams } from '../utils/viewStateUrl'
 
 const Tagging = () => {
   const navigate = useNavigate()
@@ -34,6 +35,24 @@ const Tagging = () => {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [successToast, setSuccessToast] = useState(null)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const hasRestoredTaggingFromUrl = useRef(false)
+
+  useEffect(() => {
+    if (hasRestoredTaggingFromUrl.current) return
+    hasRestoredTaggingFromUrl.current = true
+    const restored = parseTaggingStateFromUrl(searchParams)
+    if (!restored) return
+    setFilters((prev) => ({ ...prev, ...restored.filters }))
+  }, [])
+
+  useEffect(() => {
+    const params = buildTaggingUrlParams(filters)
+    const str = params.toString()
+    if (str === searchParams.toString()) return
+    setSearchParams(params, { replace: true })
+  }, [filters])
 
   const fetchExpenses = async () => {
     if (!user) return

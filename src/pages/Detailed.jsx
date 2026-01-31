@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   PieChart,
   Pie,
@@ -20,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext'
 import DateRangePicker from '../components/DateRangePicker'
 import { fetchAllExpenses } from '../utils/fetchAllRows'
 import { formatDateDisplay, formatDateRangeDisplay, formatMonthYear, formatDateForDB } from '../utils/dateFormatters'
+import { parseDetailedStateFromUrl, buildDetailedUrlParams } from '../utils/viewStateUrl'
 
 const CHART_COLORS = [
   '#0d9488', '#14b8a6', '#2dd4bf', '#5eead4',
@@ -90,6 +92,41 @@ const Detailed = () => {
   const [showPercentages, setShowPercentages] = useState(true)
   const [categories, setCategories] = useState({ mains: [], subs: {} })
   const [viewMode, setViewMode] = useState('breakdown') // 'breakdown' or 'balance'
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const hasRestoredFromUrl = useRef(false)
+
+  // Restore view state from URL on mount (e.g. when user clicks Back)
+  useEffect(() => {
+    if (hasRestoredFromUrl.current) return
+    hasRestoredFromUrl.current = true
+    const restored = parseDetailedStateFromUrl(searchParams)
+    if (!restored) return
+    setDateRange(restored.dateRange)
+    setViewMode(restored.viewMode)
+    setFilters((prev) => ({ ...prev, ...restored.filters }))
+    setGroupBy(restored.groupBy)
+    setSecondaryGroupBy(restored.secondaryGroupBy)
+    setChartType(restored.chartType)
+    setShowPercentages(restored.showPercentages)
+  }, [])
+
+  // Persist view state to URL when params change (so Back/refresh restores same view)
+  useEffect(() => {
+    const params = buildDetailedUrlParams({
+      dateRange,
+      viewMode,
+      filters,
+      groupBy,
+      secondaryGroupBy,
+      chartType,
+      showPercentages,
+    })
+    const str = params.toString()
+    const current = searchParams.toString()
+    if (str === current) return
+    setSearchParams(params, { replace: true })
+  }, [dateRange, viewMode, filters, groupBy, secondaryGroupBy, chartType, showPercentages])
 
   useEffect(() => {
     const fetchCategories = async () => {
