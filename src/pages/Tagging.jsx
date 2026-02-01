@@ -466,6 +466,9 @@ const Tagging = () => {
 
         {showFilters && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 mt-4 border-t border-gray-200">
+            <div className="md:col-span-2 lg:col-span-4">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</span>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Main Category</label>
               <select
@@ -497,6 +500,9 @@ const Tagging = () => {
                 ))}
               </select>
             </div>
+            <div className="md:col-span-2 lg:col-span-4 mt-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Date range</span>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
               <input
@@ -514,6 +520,9 @@ const Tagging = () => {
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal"
               />
+            </div>
+            <div className="md:col-span-2 lg:col-span-4 mt-2">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Type & status</span>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Exceptional Status</label>
@@ -659,7 +668,7 @@ const Tagging = () => {
       />
 
       {error && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+        <div className="error-banner">
           {error}
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Check, X, Tags } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -227,6 +227,48 @@ const CategoryManagement = () => {
 
       {isLoading ? (
         <div className="card animate-pulse h-48" />
+      ) : categories.length === 0 ? (
+        <>
+          <div className="card text-center py-12">
+            <Tags className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories yet</h3>
+            <p className="text-gray-600 mb-4">Add your first main category to start organizing expenses.</p>
+            <button
+              onClick={() => setAddingMain(true)}
+              className="btn-primary inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
+            >
+              <Plus className="w-5 h-5" />
+              Add first category
+            </button>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            {addingMain && (
+              <div className="card flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="New main category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddMainCategory()
+                    if (e.key === 'Escape') setAddingMain(false)
+                  }}
+                />
+                <button onClick={handleAddMainCategory} className="btn-primary">
+                  Add Category
+                </button>
+                <button
+                  onClick={() => { setAddingMain(false); setNewCategoryName('') }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="space-y-6">
@@ -427,7 +469,7 @@ const CategoryManagement = () => {
       )}
 
       {error && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+        <div className="error-banner">
           {error}
         </div>
       )}

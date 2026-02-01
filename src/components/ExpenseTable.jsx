@@ -183,9 +183,9 @@ const ExpenseTable = ({
 
   return (
     <div className="space-y-4">
-      {/* Bulk Actions */}
+      {/* Bulk Actions - sticky so it stays visible when scrolling */}
       {selectedRows.size > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 shadow-md">
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-5 shadow-md">
           <div className="flex flex-col gap-4">
             {/* Header */}
             <div className="flex items-center justify-between">
