@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Tag, PieChart, Filter, Tags } from 'lucide-react'
 import UserMenu from './UserMenu'
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const location = useLocation()
 
   const navItems = [
@@ -56,7 +56,7 @@ const Layout = ({ children }) => {
           <div className="flex justify-end mb-6">
             <UserMenu />
           </div>
-          {children || <Outlet />}
+          <Outlet />
         </div>
       </main>
     </div>
