@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { fetchAllCategories } from '../utils/fetchAllRows'
 
 const CategoryManagement = () => {
   const { user } = useAuth()
@@ -19,23 +20,9 @@ const CategoryManagement = () => {
     setIsLoading(true)
     setError('')
 
-    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-    const { data, error: fetchError } = await supabase
-      .from('expense_categories')
-      .select('id, main_category, sub_category, is_default, display_order')
-      .eq('user_id', user.id)
-      .order('display_order', { ascending: true })
-      .order('main_category', { ascending: true })
-      .order('sub_category', { ascending: true })
-      .range(0, 9999)
-
-    if (fetchError) {
-      setError(fetchError.message)
-      setIsLoading(false)
-      return
-    }
-
-    const grouped = (data || []).reduce((acc, row) => {
+    try {
+      const data = await fetchAllCategories(supabase, user.id)
+      const grouped = (data || []).reduce((acc, row) => {
       if (!acc[row.main_category]) {
         acc[row.main_category] = {
           main: row.main_category,
@@ -53,7 +40,11 @@ const CategoryManagement = () => {
       return acc
     }, {})
 
-    setCategories(Object.values(grouped))
+      setCategories(Object.values(grouped))
+    } catch (fetchError) {
+      setError(fetchError.message || 'Failed to fetch categories')
+      setCategories([])
+    }
     setIsLoading(false)
   }
 

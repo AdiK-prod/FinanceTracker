@@ -52,7 +52,7 @@ const Dashboard = () => {
     const str = params.toString()
     if (str === searchParams.toString()) return
     setSearchParams(params, { replace: true })
-  }, [dateRange, includeExceptional])
+  }, [dateRange, includeExceptional, searchParams])
 
   // Diagnostic function
   const runDiagnostics = async () => {

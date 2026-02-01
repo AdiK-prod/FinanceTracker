@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import {
   PieChart,
   Pie,
@@ -186,7 +186,13 @@ const Detailed = () => {
 
   const fetchExpenses = async () => {
     if (!user) return
-    if (categories.mains.length === 0) return // Wait for categories to load
+    if (categories.mains.length === 0) {
+      // No categories yet (e.g. new user) – don't block; show empty state
+      setExpenses([])
+      setLoading(false)
+      setIsRefreshing(false)
+      return
+    }
     
     // Don't show full loading state if already have data - use subtle refresh instead
     if (expenses.length > 0) {
@@ -566,7 +572,7 @@ const Detailed = () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `expenses_${formatDateDisplay(dateRange.from)}_to_${formatDateDisplay(dateRange.to)}.csv`
+    link.download = `expenses_${formatDateForDB(dateRange.from)}_to_${formatDateForDB(dateRange.to)}.csv`
     link.click()
   }
 
@@ -676,6 +682,25 @@ const Detailed = () => {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-gray-600">Loading reports...</div>
+      </div>
+    )
+  }
+
+  if (!loading && categories.mains.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Detailed Reports</h1>
+          <p className="text-gray-600 mt-1">Advanced analytics and breakdowns</p>
+        </div>
+        <div className="card text-center py-12">
+          <Filter className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories yet</h3>
+          <p className="text-gray-600 mb-4">Add categories in the Categories page to see breakdowns and balance analysis here.</p>
+          <Link to="/categories" className="btn-primary inline-flex items-center gap-2">
+            Go to Categories
+          </Link>
+        </div>
       </div>
     )
   }
@@ -1076,9 +1101,9 @@ const Detailed = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {aggregatedData.map((item, idx) => (
-                <>
+                <React.Fragment key={item.sortKey ?? `${item.name}-${idx}`}>
                   {/* Primary row */}
-                  <tr key={`${item.name}-${idx}`} className={`hover:bg-gray-50 ${secondaryGroupBy ? 'bg-gray-50 font-semibold' : ''}`}>
+                  <tr className={`hover:bg-gray-50 ${secondaryGroupBy ? 'bg-gray-50 font-semibold' : ''}`}>
                     <td className={`px-6 py-4 text-sm ${secondaryGroupBy ? 'font-bold' : 'font-medium'} text-gray-900`}>
                       {item.name}
                     </td>
@@ -1129,7 +1154,7 @@ const Detailed = () => {
                       </td>
                     </tr>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

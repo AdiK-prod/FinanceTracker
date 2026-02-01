@@ -218,11 +218,28 @@ export async function diagnoseIncomeData() {
   }
 }
 
+/**
+ * Normalize date to YYYY-MM-DD string. Accepts Date or ISO date string.
+ */
+function toDateString(d) {
+  if (!d) return null
+  if (typeof d === 'string') return d.split('T')[0]
+  if (d instanceof Date && !Number.isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  return null
+}
+
 export async function diagnoseExpenseQuery(dateRange) {
   const { data: user } = await supabase.auth.getUser()
   
   if (!user?.user?.id) {
     console.error('No user logged in')
+    return null
+  }
+  
+  const dateFrom = toDateString(dateRange?.from)
+  const dateTo = toDateString(dateRange?.to)
+  if (!dateFrom || !dateTo) {
+    console.error('Invalid date range: from and to must be Date or YYYY-MM-DD string')
     return null
   }
   
@@ -232,8 +249,8 @@ export async function diagnoseExpenseQuery(dateRange) {
   try {
     // Use paginated fetch to bypass Supabase 1000 row limit
     const data = await fetchAllExpenses(supabase, user.user.id, {
-      dateFrom: dateRange.from.toISOString().split('T')[0],
-      dateTo: dateRange.to.toISOString().split('T')[0],
+      dateFrom,
+      dateTo,
       includeExceptional: true
     })
     

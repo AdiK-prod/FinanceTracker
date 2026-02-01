@@ -455,7 +455,7 @@ const Tagging = () => {
             </button>
           </div>
           <div className="text-sm text-gray-600 flex items-center gap-2">
-            <span>Showing {filteredExpenses.length} of {expenses.length} expenses</span>
+            <span>Showing {filteredExpenses.length} of {expenses.length} transactions</span>
             {filters.showOnlyMissingSubCategory && (
               <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                 Missing sub-category: {filteredExpenses.length}
