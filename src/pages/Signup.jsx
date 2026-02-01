@@ -49,7 +49,7 @@ const Signup = () => {
         <p className="text-sm font-medium text-gray-600 mb-6">Invite your household and start tracking</p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <div className="error-banner mb-4">
             {error}
           </div>
         )}
@@ -102,7 +102,7 @@ const Signup = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-primary w-full disabled:opacity-70 disabled:cursor-not-allowed"
+            className="btn-primary w-full disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             {isSubmitting ? 'Creating account...' : 'Create Account'}
           </button>
@@ -110,7 +110,7 @@ const Signup = () => {
 
         <p className="text-sm text-gray-600 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/login" className="text-teal-600 hover:text-teal-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 rounded">
             Sign in
           </Link>
         </p>

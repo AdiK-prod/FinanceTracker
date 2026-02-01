@@ -92,6 +92,7 @@ const Detailed = () => {
   const [showPercentages, setShowPercentages] = useState(true)
   const [categories, setCategories] = useState({ mains: [], subs: {} })
   const [viewMode, setViewMode] = useState('breakdown') // 'breakdown' or 'balance'
+  const [exportToast, setExportToast] = useState(false)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const hasRestoredFromUrl = useRef(false)
@@ -574,6 +575,9 @@ const Detailed = () => {
     link.href = url
     link.download = `expenses_${formatDateForDB(dateRange.from)}_to_${formatDateForDB(dateRange.to)}.csv`
     link.click()
+    window.URL.revokeObjectURL(url)
+    setExportToast(true)
+    setTimeout(() => setExportToast(false), 2500)
   }
 
   const renderChart = () => {
@@ -707,6 +711,13 @@ const Detailed = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+      {/* Export success toast */}
+      {exportToast && (
+        <div className="fixed top-4 right-4 z-50 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
+          <Download className="w-5 h-5" />
+          <span className="text-sm font-medium">Export downloaded</span>
+        </div>
+      )}
       {/* Subtle refreshing indicator */}
       {isRefreshing && (
         <div className="fixed top-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-fade-in">
@@ -724,27 +735,33 @@ const Detailed = () => {
         {/* View Mode Toggle */}
         <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
           <span className="text-sm font-semibold text-gray-700">View:</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('breakdown')}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                viewMode === 'breakdown'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              📊 Category Breakdown
-            </button>
-            <button
-              onClick={() => setViewMode('balance')}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                viewMode === 'balance'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💰 Balance Analysis
-            </button>
+          <div className="flex flex-wrap gap-4">
+            <div>
+              <button
+                onClick={() => setViewMode('breakdown')}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 ${
+                  viewMode === 'breakdown'
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                📊 Category Breakdown
+              </button>
+              <p className="text-xs text-gray-500 mt-1">Spending by category, merchant, or month</p>
+            </div>
+            <div>
+              <button
+                onClick={() => setViewMode('balance')}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 ${
+                  viewMode === 'balance'
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                💰 Balance Analysis
+              </button>
+              <p className="text-xs text-gray-500 mt-1">Income vs expenses and running balance</p>
+            </div>
           </div>
         </div>
         
@@ -1162,7 +1179,7 @@ const Detailed = () => {
       </div>
 
           {error && (
-            <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700 mt-6">
+            <div className="error-banner mt-6">
               {error}
             </div>
           )}

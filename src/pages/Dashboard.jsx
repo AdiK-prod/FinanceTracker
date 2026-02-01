@@ -226,8 +226,8 @@ Check browser console (F12) for full details.
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">Overview of your household spending</p>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-teal transition-colors">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-teal transition-colors focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-1">
             <input
               type="checkbox"
               checked={includeExceptional}
@@ -246,7 +246,7 @@ Check browser console (F12) for full details.
           />
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             <Plus size={20} />
             Add Manually
@@ -263,7 +263,7 @@ Check browser console (F12) for full details.
           )}
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             <Upload size={24} />
             Upload Expenses
@@ -384,10 +384,11 @@ Check browser console (F12) for full details.
 
       {/* Empty State */}
       {!isLoading && expenses.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="card text-center py-12">
           <Wallet className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions yet</h3>
-          <p className="text-gray-600 mb-4">Add your first transaction or upload a CSV file</p>
+          <p className="text-gray-600 mb-2">Add your first transaction or upload a CSV file to see your dashboard here.</p>
+          <p className="text-sm text-gray-500 mb-4">Income, expenses, and category breakdown will appear once you have data.</p>
           <div className="flex gap-3 justify-center">
             <button onClick={() => setShowAddModal(true)} className="btn-secondary flex items-center gap-2">
               <Plus size={20} />
@@ -544,7 +545,7 @@ Check browser console (F12) for full details.
       </div>
 
       {error && (
-        <div className="border border-red-200 bg-red-50 rounded-lg p-4 text-sm text-red-700">
+        <div className="error-banner">
           {error}
         </div>
       )}

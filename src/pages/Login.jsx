@@ -36,7 +36,7 @@ const Login = () => {
         <p className="text-sm font-medium text-gray-600 mb-6">Sign in to your household dashboard</p>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <div className="error-banner mb-4">
             {error}
           </div>
         )}
@@ -67,7 +67,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="btn-primary w-full disabled:opacity-70 disabled:cursor-not-allowed"
+            className="btn-primary w-full disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             {isSubmitting ? 'Signing in...' : 'Sign In'}
           </button>
@@ -75,7 +75,7 @@ const Login = () => {
 
         <p className="text-sm text-gray-600 mt-6">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/signup" className="text-teal-600 hover:text-teal-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 rounded">
             Sign up
           </Link>
         </p>
