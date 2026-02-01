@@ -251,14 +251,16 @@ Check browser console (F12) for full details.
             <Plus size={20} />
             Add Manually
           </button>
-          <button
-            onClick={runDiagnostics}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
-            title="Run diagnostic to check income data and date filtering"
-          >
-            <Search size={20} />
-            Diagnose Data
-          </button>
+          {import.meta.env.DEV && (
+            <button
+              onClick={runDiagnostics}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
+              title="Run diagnostic to check income data and date filtering"
+            >
+              <Search size={20} />
+              Diagnose Data
+            </button>
+          )}
           <button
             onClick={() => setIsUploadOpen(true)}
             className="btn-primary flex items-center gap-2"
