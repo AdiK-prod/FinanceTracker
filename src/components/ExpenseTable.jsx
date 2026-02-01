@@ -163,7 +163,11 @@ const ExpenseTable = ({
     return (
       <th
         onClick={() => handleSort(columnKey)}
-        className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none group"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(columnKey); } }}
+        tabIndex={0}
+        role="columnheader"
+        aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+        className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none group focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-500"
       >
         <div className="flex items-center gap-2">
           <span>{children}</span>
@@ -214,7 +218,7 @@ const ExpenseTable = ({
               {/* Category Assignment */}
               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  📁 Assign Categories
+                  <span role="img" aria-hidden="true">📁</span> Assign Categories
                 </div>
                 <div className="space-y-2">
                   <select
@@ -254,7 +258,7 @@ const ExpenseTable = ({
               {/* Transaction Type */}
               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  💰 Transaction Type
+                  <span role="img" aria-hidden="true">💰</span> Transaction Type
                 </div>
                 <div className="space-y-2">
                   <button
@@ -262,14 +266,14 @@ const ExpenseTable = ({
                     className="w-full px-4 py-2.5 bg-red-50 border-2 border-red-500 text-red-700 rounded-md hover:bg-red-100 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                     title="Convert selected transactions to expenses"
                   >
-                    💸 Mark as Expense
+                    <span role="img" aria-hidden="true">💸</span> Mark as Expense
                   </button>
                   <button
                     onClick={() => handleBulkTypeConversion('income')}
                     className="w-full px-4 py-2.5 bg-green-50 border-2 border-green-500 text-green-700 rounded-md hover:bg-green-100 font-semibold text-sm transition-colors flex items-center justify-center gap-2"
                     title="Convert selected transactions to income"
                   >
-                    💰 Mark as Income
+                    <span role="img" aria-hidden="true">💰</span> Mark as Income
                   </button>
                 </div>
               </div>
@@ -277,7 +281,7 @@ const ExpenseTable = ({
               {/* Other Actions */}
               <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  ⚡ Quick Actions
+                  <span role="img" aria-hidden="true">⚡</span> Quick Actions
                 </div>
                 <div className="space-y-2">
                   <button
@@ -309,8 +313,8 @@ const ExpenseTable = ({
       {/* Table */}
       <div className="card card-hover overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+          <table className="w-full" role="grid" aria-label="Expense transactions table">
+            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left">
                   <input
@@ -323,7 +327,8 @@ const ExpenseTable = ({
                         setSelectedRows(new Set())
                       }
                     }}
-                    className="rounded border-gray-300"
+                    className="rounded border-gray-300 focus:ring-2 focus:ring-teal-500"
+                    aria-label="Select all transactions"
                   />
                 </th>
                 <SortableHeader columnKey="transaction_date">Date</SortableHeader>
@@ -350,11 +355,22 @@ const ExpenseTable = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr>
-                  <td colSpan={11} className="px-6 py-12">
-                    <div className="h-8 w-full rounded bg-gray-100 animate-pulse" />
-                  </td>
-                </tr>
+                // Skeleton loading rows
+                [...Array(8)].map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <td className="px-6 py-4"><div className="h-4 w-4 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-32 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-20 bg-gray-200 rounded-full" /></td>
+                    <td className="px-6 py-4"><div className="h-8 w-28 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-8 w-28 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-20 bg-gray-200 rounded-full" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-20 bg-gray-200 rounded-full" /></td>
+                    <td className="px-6 py-4"><div className="h-8 w-8 bg-gray-200 rounded" /></td>
+                  </tr>
+                ))
               ) : expenses.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-6 py-12">
@@ -374,14 +390,17 @@ const ExpenseTable = ({
                 return (
                   <tr
                     key={expense.id}
-                    className={`transition-all duration-300 ease-in-out hover:bg-gray-50 ${rowBackground}`}
+                    className={`transition-all duration-200 ease-in-out hover:bg-gray-100 ${rowBackground} ${
+                      selectedRows.has(expense.id) ? 'ring-2 ring-inset ring-teal-500 bg-teal-50/50' : ''
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
                         checked={selectedRows.has(expense.id)}
                         onChange={() => toggleRowSelection(expense.id)}
-                        className="rounded border-gray-300"
+                        className="rounded border-gray-300 focus:ring-2 focus:ring-teal-500"
+                        aria-label={`Select transaction from ${expense.merchant}`}
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -460,7 +479,7 @@ const ExpenseTable = ({
                         }`}
                         title={`Change to ${isIncome ? 'Expense' : 'Income'}`}
                       >
-                        {isIncome ? '💰 Income' : '💸 Expense'}
+                        {isIncome ? <><span role="img" aria-hidden="true">💰</span> Income</> : <><span role="img" aria-hidden="true">💸</span> Expense</>}
                       </button>
                     </td>
                     

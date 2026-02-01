@@ -332,7 +332,7 @@ const Detailed = () => {
   // Category Breakdown: only expenses (exclude income; include legacy null as expense)
   const isExpense = (exp) => {
     const t = exp.transaction_type
-    if (t == null || t === '') return true
+    if (t === null || t === undefined || t === '') return true
     return String(t).toLowerCase() === 'expense'
   }
   const expensesForBreakdown = useMemo(
@@ -568,6 +568,8 @@ const Detailed = () => {
     link.href = url
     link.download = `expenses_${formatDateDisplay(dateRange.from)}_to_${formatDateDisplay(dateRange.to)}.csv`
     link.click()
+    // Clean up the object URL to prevent memory leak
+    window.URL.revokeObjectURL(url)
   }
 
   const renderChart = () => {
@@ -1147,14 +1149,14 @@ const Detailed = () => {
         <div>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-xl p-6 border-2 border-green-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border-2 border-green-300 shadow-sm">
               <p className="text-sm font-semibold text-green-700 mb-1">Total Income</p>
               <p className="text-2xl font-bold text-green-900">
                 {formatAmount(balanceSummary.totalIncome)}
               </p>
             </div>
             
-            <div className="bg-white rounded-xl p-6 border-2 border-red-200 shadow-sm">
+            <div className="bg-white rounded-xl p-6 border-2 border-red-300 shadow-sm">
               <p className="text-sm font-semibold text-red-700 mb-1">Total Expenses</p>
               <p className="text-2xl font-bold text-red-900">
                 {formatAmount(balanceSummary.totalExpenses)}
@@ -1162,9 +1164,9 @@ const Detailed = () => {
             </div>
             
             <div className={`rounded-xl p-6 border-2 shadow-sm ${
-              balanceSummary.totalBalance >= 0 
-                ? 'bg-white border-blue-200' 
-                : 'bg-white border-orange-200'
+              balanceSummary.totalBalance >= 0
+                ? 'bg-white border-blue-300'
+                : 'bg-white border-orange-300'
             }`}>
               <p className={`text-sm font-semibold mb-1 ${
                 balanceSummary.totalBalance >= 0 ? 'text-blue-700' : 'text-orange-700'

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Tag, Search, Filter, X, Upload, ChevronDown, Plus } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
@@ -35,6 +35,7 @@ const Tagging = () => {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [successToast, setSuccessToast] = useState(null)
+  const toastTimeoutRef = useRef(null)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const hasRestoredTaggingFromUrl = useRef(false)
@@ -685,10 +686,11 @@ const Tagging = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={(counts) => {
-          // Show success toast
+          // Show success toast with cleanup
           setSuccessToast(counts)
-          setTimeout(() => setSuccessToast(null), 5000)
-          
+          if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+          toastTimeoutRef.current = setTimeout(() => setSuccessToast(null), 5000)
+
           // Refresh data
           fetchExpenses()
           fetchCategories()
