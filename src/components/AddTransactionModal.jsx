@@ -6,6 +6,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
   const [transactions, setTransactions] = useState([createEmptyTransaction()]);
   const [categories, setCategories] = useState({ mains: [], subs: {} });
   const [saving, setSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
   
   useEffect(() => {
     if (isOpen) {
@@ -114,11 +115,13 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
   
   async function handleSave() {
     const errors = validateTransactions();
-    
+
     if (errors.length > 0) {
-      alert('Please fix the following:\n\n• ' + errors.join('\n• '));
+      setValidationErrors(errors);
       return;
     }
+
+    setValidationErrors([]);
     
     setSaving(true);
     
@@ -205,6 +208,30 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
         
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-red-500 text-xl flex-shrink-0">⚠️</div>
+                <div>
+                  <h3 className="font-semibold text-red-800 mb-2">Please fix the following errors:</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationErrors.map((error, idx) => (
+                      <li key={idx} className="text-sm text-red-700">{error}</li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={() => setValidationErrors([])}
+                  className="ml-auto text-red-400 hover:text-red-600 p-1"
+                  aria-label="Dismiss errors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             {transactions.map((transaction, index) => (
               <TransactionForm
@@ -445,13 +472,16 @@ function TransactionForm({ transaction, index, categories, canDelete, onUpdate, 
                 value={transaction.sub_category}
                 onChange={(e) => onUpdate(transaction.id, 'sub_category', e.target.value)}
                 disabled={!transaction.main_category}
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-teal-500 focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
               >
                 <option value="">Select...</option>
                 {transaction.main_category && categories.subs[transaction.main_category]?.map(sub => (
                   <option key={sub} value={sub}>{sub}</option>
                 ))}
               </select>
+              {!transaction.main_category && (
+                <p className="text-xs text-gray-500 mt-1">Select a main category first</p>
+              )}
             </div>
           </>
         )}

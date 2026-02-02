@@ -546,7 +546,8 @@ const UploadZone = ({ onConfirmUpload }) => {
 
     const existingSignatures = new Set()
     existingExpenses.forEach((exp) => {
-      const signature = `${exp.transaction_date}|${exp.merchant.toLowerCase().trim()}|${Math.round(exp.amount * 100)}`
+      const merchantName = exp.merchant?.toLowerCase().trim() || ''
+      const signature = `${exp.transaction_date}|${merchantName}|${Math.round((exp.amount || 0) * 100)}`
       existingSignatures.add(signature)
     })
 
@@ -556,7 +557,8 @@ const UploadZone = ({ onConfirmUpload }) => {
     const duplicates = []
 
     newTransactions.forEach((transaction) => {
-      const signature = `${transaction.date}|${transaction.merchant.toLowerCase().trim()}|${Math.round(transaction.amount * 100)}`
+      const merchantName = transaction.merchant?.toLowerCase().trim() || ''
+      const signature = `${transaction.date}|${merchantName}|${Math.round((transaction.amount || 0) * 100)}`
 
       if (existingSignatures.has(signature)) {
         duplicates.push(transaction)
@@ -733,13 +735,15 @@ const UploadZone = ({ onConfirmUpload }) => {
     } else {
       // Only import unique transactions
       const uniqueSignatures = new Set(
-        duplicateCheckResult.unique.map((t) =>
-          `${t.date}|${t.merchant.toLowerCase().trim()}|${Math.round(t.amount * 100)}`
-        )
+        duplicateCheckResult.unique.map((t) => {
+          const merchantName = t.merchant?.toLowerCase().trim() || ''
+          return `${t.date}|${merchantName}|${Math.round((t.amount || 0) * 100)}`
+        })
       )
 
       toImport = parsedRows.filter((row) => {
-        const signature = `${row.date}|${row.merchant.toLowerCase().trim()}|${Math.round(row.amount * 100)}`
+        const merchantName = row.merchant?.toLowerCase().trim() || ''
+        const signature = `${row.date}|${merchantName}|${Math.round((row.amount || 0) * 100)}`
         return uniqueSignatures.has(signature)
       })
     }

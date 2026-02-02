@@ -9,12 +9,19 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let isMounted = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) {
-        setSession(data.session || null)
-        setLoading(false)
-      }
-    })
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (isMounted) {
+          setSession(data.session || null)
+          setLoading(false)
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          console.error('Auth session error:', error)
+          setLoading(false)
+        }
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
