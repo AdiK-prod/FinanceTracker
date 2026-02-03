@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [successToast, setSuccessToast] = useState(null)
+  const toastTimeoutRef = useRef(null)
   const getCurrentMonthRange = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -297,11 +298,11 @@ Check browser console (F12) for full details.
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Income Card */}
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-300 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">💰</span>
+                  <span className="text-2xl" role="img" aria-label="Money bag">💰</span>
                   <p className="text-sm font-semibold text-green-700 uppercase tracking-wide">
                     Total Income
                   </p>
@@ -313,18 +314,18 @@ Check browser console (F12) for full details.
                   {incomeCount} transaction{incomeCount !== 1 ? 's' : ''}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
+              <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-2xl shadow-lg" aria-hidden="true">
                 💵
               </div>
             </div>
           </div>
           
           {/* Expense Card */}
-          <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border-2 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border-2 border-red-300 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">💸</span>
+                  <span className="text-2xl" role="img" aria-label="Flying money">💸</span>
                   <p className="text-sm font-semibold text-red-700 uppercase tracking-wide">
                     Total Expenses
                   </p>
@@ -336,7 +337,7 @@ Check browser console (F12) for full details.
                   {expenseCount} transaction{expenseCount !== 1 ? 's' : ''}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg">
+              <div className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg" aria-hidden="true">
                 🛒
               </div>
             </div>
@@ -344,14 +345,14 @@ Check browser console (F12) for full details.
           
           {/* Net Balance Card */}
           <div className={`rounded-xl p-6 border-2 shadow-sm hover:shadow-md transition-shadow ${
-            netBalance >= 0 
-              ? 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200' 
-              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
+            netBalance >= 0
+              ? 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-300'
+              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-300'
           }`}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">{netBalance >= 0 ? '📈' : '📉'}</span>
+                  <span className="text-2xl" role="img" aria-label={netBalance >= 0 ? 'Chart going up' : 'Chart going down'}>{netBalance >= 0 ? '📈' : '📉'}</span>
                   <p className={`text-sm font-semibold uppercase tracking-wide ${
                     netBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
                   }`}>
@@ -374,7 +375,7 @@ Check browser console (F12) for full details.
               </div>
               <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg ${
                 netBalance >= 0 ? 'bg-blue-500' : 'bg-orange-500'
-              }`}>
+              }`} aria-hidden="true">
                 {netBalance >= 0 ? '✅' : '⚠️'}
               </div>
             </div>
@@ -552,8 +553,8 @@ Check browser console (F12) for full details.
 
       {/* Upload Modal */}
       {isUploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-4xl max-h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-4xl max-h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col animate-scale-in">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">Upload Expenses</h2>
@@ -578,9 +579,10 @@ Check browser console (F12) for full details.
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={async (counts) => {
-          // Show success toast
+          // Show success toast with cleanup
           setSuccessToast(counts)
-          setTimeout(() => setSuccessToast(null), 5000)
+          if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+          toastTimeoutRef.current = setTimeout(() => setSuccessToast(null), 5000)
           
           // Refresh expenses by triggering a re-fetch
           if (!user) return
