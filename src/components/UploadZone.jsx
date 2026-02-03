@@ -571,29 +571,89 @@ const UploadZone = ({ onConfirmUpload }) => {
     return { unique, duplicates, existingExpenses }
   }
 
+  // Normalize merchant for matching: same key for "בע\"מ" / "בע'מ" / "בע׳מ", and for space/Unicode variants
+  const normalizeMerchantKey = (str) => {
+    if (!str || typeof str !== 'string') return ''
+    let s = str.normalize('NFC').toLowerCase().trim()
+    s = s.replace(/[\u0022\u0027\u05F3\u00B4\u2018\u2019\u201A\u201B\u201C\u201D\u201E\u201F\u2032\u2033]/g, "'")
+    s = s.replace(/\s+/g, ' ').trim()
+    // Strip RTL/LTR and other control chars that can differ between CSV and DB
+    s = s.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '').trim()
+    return s
+  }
+
   const applyAutoTagging = async (transactions) => {
+    // Use all distinct raw spellings so DB query matches (e.g. "בע\"מ" vs "בע'מ"); match uses normalized key
     const uniqueMerchants = Array.from(
-      new Set(transactions.map((t) => t.merchant.toLowerCase().trim()).filter(Boolean))
+      new Set(transactions.map((t) => t.merchant?.trim()).filter(Boolean))
     )
 
+    if (!uniqueMerchants.length || !user?.id) {
+      return transactions.map((t) => ({
+        ...t,
+        main_category: null,
+        sub_category: null,
+        is_auto_tagged: false,
+      }))
+    }
+
+    // PostgREST reserves: , . : ( ) — and / breaks URLs. Wrap value in double quotes so
+    // e.g. "APPLE.COM/BILL" is sent as one value; escape inner " as "".
     const escapeForIlike = (value) => value.replace(/[%_]/g, '\\$&')
+    const needsQuotes = /[,.:()/]/
+    const quoteValue = (value) => {
+      const escaped = escapeForIlike(value)
+      if (needsQuotes.test(escaped)) {
+        return `"${escaped.replace(/"/g, '""')}"`
+      }
+      return escaped
+    }
+    // So one query matches DB rows with different quote/geresh or space: use _ (SQL single-char wildcard)
+    const QUOTE_LIKE = /[\u0022\u0027\u05F3\u00B4\u2018\u2019\u201A\u201B\u201C\u201D\u201E\u201F\u2032\u2033]/g
+    const merchantToIlikePattern = (raw) => {
+      let s = raw.normalize('NFC').toLowerCase()
+      s = escapeForIlike(s) // escape % and _ in original so they stay literal
+      s = s.replace(QUOTE_LIKE, '_')
+      // Match any Unicode whitespace so "נומנה קפה" matches "נומנה\u202Fקפה" (narrow no-break space)
+      s = s.replace(/\s/g, '_')
+      s = s.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+      return s
+    }
     const ilikeFilters = uniqueMerchants
-      .map((merchant) => `merchant.ilike.${escapeForIlike(merchant)}`)
+      .map((merchant) => `merchant.ilike.${quoteValue(merchantToIlikePattern(merchant))}`)
       .join(',')
 
-    // Use range to fetch up to 10,000 rows (removes default 1000 row limit)
-    const { data: patterns } = uniqueMerchants.length
-      ? await supabase
+    // Fetch ALL matching tagged rows for this user (paginate to bypass 1000 row limit)
+    let patterns = []
+    let from = 0
+    const pageSize = 1000
+    let hasMore = true
+    while (hasMore) {
+      const to = from + pageSize - 1
+      const { data, error } = await supabase
         .from('expenses')
         .select('merchant, main_category, sub_category, transaction_date')
+        .eq('user_id', user.id)
         .not('main_category', 'is', null)
         .or(ilikeFilters)
         .order('transaction_date', { ascending: false })
-        .range(0, 9999)
-      : { data: [] }
+        .range(from, to)
 
-    const patternMap = (patterns || []).reduce((acc, row) => {
-      const key = row.merchant?.toLowerCase().trim()
+      if (error) {
+        console.error('Auto-tagging pattern fetch error:', error)
+        break
+      }
+      if (data?.length) {
+        patterns = patterns.concat(data)
+        hasMore = data.length >= pageSize
+        from += pageSize
+      } else {
+        hasMore = false
+      }
+    }
+
+    const patternMap = patterns.reduce((acc, row) => {
+      const key = normalizeMerchantKey(row.merchant)
       if (!key || acc[key]) return acc
       acc[key] = {
         main_category: row.main_category,
@@ -603,7 +663,7 @@ const UploadZone = ({ onConfirmUpload }) => {
     }, {})
 
     return transactions.map((transaction) => {
-      const match = patternMap[transaction.merchant.toLowerCase().trim()]
+      const match = patternMap[normalizeMerchantKey(transaction.merchant)]
       return {
         ...transaction,
         main_category: match?.main_category || null,
