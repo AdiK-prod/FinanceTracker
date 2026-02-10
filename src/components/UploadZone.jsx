@@ -242,17 +242,22 @@ const detectHeaderRow = (rawData) => {
   const headerKeywords = [
     'תאריך רכישה',   // Purchase date
     'תאריך עסקה',    // Transaction date
+    'תאריך ערך',     // Value date (Fibi bank)
     'תאריך',         // Date
     'date',
     'שם בית עסק',    // Merchant name
     'בית עסק',       // Merchant
     'merchant',
     'description',
+    'תיאור',         // Description (Fibi bank)
     'סכום חיוב',     // Billing amount
     'סכום עסקה',     // Transaction amount
     'סכום',          // Amount
     'amount',
     'total',
+    'יתרה',          // Balance (Fibi bank)
+    'זכות',          // Credit (Fibi bank)
+    'חובה',          // Debit (Fibi bank)
     'מטבע',          // Currency
     'currency',
   ]
@@ -436,12 +441,12 @@ const UploadZone = ({ onConfirmUpload }) => {
         rawData = csvData
       } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
         const arrayBuffer = await file.arrayBuffer()
-        const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true })
+        // Use raw values and no cellDates so date cells stay as Excel serials; we parse them as DD/MM in parseFlexibleDate
+        const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: false })
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
         rawData = XLSX.utils.sheet_to_json(worksheet, {
           header: 1,
-          raw: false,
-          dateNF: 'yyyy-mm-dd',
+          raw: true,
           defval: '',
         })
         console.log(`📄 Excel file loaded: ${rawData.length} total rows`)
