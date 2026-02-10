@@ -118,12 +118,13 @@ const parseFlexibleDate = (dateValue) => {
 
   const asNumber = parseFloat(dateStr)
   if (!Number.isNaN(asNumber) && asNumber > 1000 && asNumber < 100000) {
-    const excelEpoch = new Date(1899, 11, 30)
-    const date = new Date(excelEpoch.getTime() + asNumber * 86400000)
+    // Use UTC so the calendar date is the same in every timezone (Excel serial = day count, not a moment)
+    const excelEpochUtc = Date.UTC(1899, 11, 30)
+    const date = new Date(excelEpochUtc + asNumber * 86400000)
     if (!Number.isNaN(date.getTime())) {
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
+      const year = date.getUTCFullYear()
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(date.getUTCDate()).padStart(2, '0')
       const result = `${year}-${month}-${day}`
       return isValidDateString(result) ? result : null
     }
