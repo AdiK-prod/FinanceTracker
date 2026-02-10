@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchAllCategories } from '../utils/fetchAllRows';
 
 export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
   const [transactions, setTransactions] = useState([createEmptyTransaction()]);
@@ -15,27 +16,26 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
   }, [isOpen]);
   
   async function fetchCategories() {
-    const { data: user } = await supabase.auth.getUser();
-    
-    const { data, error } = await supabase
-      .from('expense_categories')
-      .select('main_category, sub_category')
-      .eq('user_id', user.user.id)
-      .order('main_category')
-      .order('sub_category');
-    
-    if (error) return;
-    
-    const mains = [...new Set(data.map(c => c.main_category))];
-    const subs = data.reduce((acc, cat) => {
-      if (cat.sub_category) {
-        if (!acc[cat.main_category]) acc[cat.main_category] = [];
-        acc[cat.main_category].push(cat.sub_category);
-      }
-      return acc;
-    }, {});
-    
-    setCategories({ mains, subs });
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth?.user?.id;
+    if (!userId) return;
+
+    try {
+      const data = await fetchAllCategories(supabase, userId);
+      const rows = Array.isArray(data) ? data : [];
+      const mains = [...new Set(rows.map(c => c.main_category).filter(Boolean))];
+      const subs = rows.reduce((acc, cat) => {
+        if (cat.main_category && cat.sub_category) {
+          if (!acc[cat.main_category]) acc[cat.main_category] = [];
+          acc[cat.main_category].push(cat.sub_category);
+        }
+        return acc;
+      }, {});
+      setCategories({ mains, subs });
+    } catch (err) {
+      console.error('AddTransactionModal: failed to load categories', err);
+      setCategories({ mains: [], subs: {} });
+    }
   }
   
   function createEmptyTransaction() {
@@ -64,7 +64,7 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
   }
   
   function updateTransaction(id, field, value) {
-    setTransactions(transactions.map(t => 
+    setTransactions(prev => prev.map(t =>
       t.id === id ? { ...t, [field]: value } : t
     ));
   }
