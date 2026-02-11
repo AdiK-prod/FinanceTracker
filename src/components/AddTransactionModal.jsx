@@ -93,8 +93,9 @@ export default function AddTransactionModal({ isOpen, onClose, onSuccess }) {
         }
       }
       
-      if (!t.amount || parseFloat(t.amount) <= 0) {
-        errors.push(`Transaction ${num}: Valid amount required`);
+      const amountNum = parseFloat(t.amount);
+      if (t.amount === '' || t.amount == null || Number.isNaN(amountNum) || amountNum === 0) {
+        errors.push(`Transaction ${num}: Valid amount required (non-zero)`);
       }
       
       // Check for potential duplicates
@@ -427,7 +428,6 @@ function TransactionForm({ transaction, index, categories, canDelete, onUpdate, 
           <input
             type="number"
             step="0.01"
-            min="0"
             max="999999.99"
             value={transaction.amount}
             onChange={(e) => onUpdate(transaction.id, 'amount', e.target.value)}

@@ -83,7 +83,8 @@ const Detailed = () => {
   })
 
   const [selectedMainCategories, setSelectedMainCategories] = useState([])
-  const [selectedSubCategories, setSelectedSubCategories] = useState([])
+  /** Selected sub-categories per main: { [mainCategory]: string[] } so the same sub name under different mains is independent */
+  const [selectedSubCategories, setSelectedSubCategories] = useState({})
   const [showCategoryFilter, setShowCategoryFilter] = useState(false)
 
   const [groupBy, setGroupBy] = useState('main_category')
@@ -158,12 +159,15 @@ const Detailed = () => {
     fetchCategories()
   }, [user])
 
-  // Initialize all categories as selected
+  // Initialize all categories as selected (subs per main so same sub name under different mains is independent)
   useEffect(() => {
     if (categories.mains.length > 0 && selectedMainCategories.length === 0) {
       setSelectedMainCategories(categories.mains)
-      const allSubs = Object.values(categories.subs).flat()
-      setSelectedSubCategories(allSubs)
+      setSelectedSubCategories(
+        Object.fromEntries(
+          categories.mains.map((m) => [m, [...(categories.subs[m] || [])]])
+        )
+      )
     }
   }, [categories, selectedMainCategories.length])
 
@@ -240,17 +244,15 @@ const Detailed = () => {
         )
       }
 
-      // Filter by sub-categories (but always include income transactions)
-      if (selectedSubCategories.length > 0) {
-        const allPossibleSubs = Object.values(categories.subs).flat()
-        if (selectedSubCategories.length < allPossibleSubs.length) {
-          filtered = filtered.filter((exp) =>
-            exp.transaction_type === 'income' || // Always include income
-            !exp.sub_category ||
-            selectedSubCategories.includes(exp.sub_category)
-          )
-        }
-      }
+      // Filter by sub-categories per main (same sub name under different mains is independent)
+      filtered = filtered.filter((exp) => {
+        if (exp.transaction_type === 'income') return true
+        if (!exp.main_category) return true
+        if (!exp.sub_category) return true
+        const selectedForMain = selectedSubCategories[exp.main_category]
+        if (selectedForMain === undefined) return true // not yet filtering this main
+        return selectedForMain.includes(exp.sub_category)
+      })
 
       // Exclude uncategorized expenses (keep income; expenses must have main_category)
       if (filters.excludeUncategorized) {
@@ -277,42 +279,45 @@ const Detailed = () => {
   const toggleMainCategory = (category) => {
     setSelectedMainCategories((prev) => {
       if (prev.includes(category)) {
-        // Deselect main category and all its subs
-        const subsToRemove = categories.subs[category] || []
-        setSelectedSubCategories((prevSubs) =>
-          prevSubs.filter((sub) => !subsToRemove.includes(sub))
-        )
+        setSelectedSubCategories((prevSubs) => {
+          const next = { ...prevSubs }
+          delete next[category]
+          return next
+        })
         return prev.filter((c) => c !== category)
       } else {
-        // Select main category and all its subs
-        const subsToAdd = categories.subs[category] || []
-        setSelectedSubCategories((prevSubs) =>
-          [...new Set([...prevSubs, ...subsToAdd])]
-        )
+        setSelectedSubCategories((prevSubs) => ({
+          ...prevSubs,
+          [category]: [...(categories.subs[category] || [])],
+        }))
         return [...prev, category]
       }
     })
   }
 
-  const toggleSubCategory = (subCategory) => {
+  const toggleSubCategory = (mainCat, subCat) => {
     setSelectedSubCategories((prev) => {
-      if (prev.includes(subCategory)) {
-        return prev.filter((s) => s !== subCategory)
-      } else {
-        return [...prev, subCategory]
+      const list = prev[mainCat] ?? []
+      if (list.includes(subCat)) {
+        const nextList = list.filter((s) => s !== subCat)
+        return { ...prev, [mainCat]: nextList }
       }
+      return { ...prev, [mainCat]: [...list, subCat] }
     })
   }
 
   const selectAllCategories = () => {
     setSelectedMainCategories(categories.mains)
-    const allSubs = Object.values(categories.subs).flat()
-    setSelectedSubCategories(allSubs)
+    setSelectedSubCategories(
+      Object.fromEntries(
+        categories.mains.map((m) => [m, [...(categories.subs[m] || [])]])
+      )
+    )
   }
 
   const deselectAllCategories = () => {
     setSelectedMainCategories([])
-    setSelectedSubCategories([])
+    setSelectedSubCategories({})
   }
 
   const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
@@ -824,7 +829,7 @@ const Detailed = () => {
               {categories.mains.map((mainCat) => {
                 const isMainSelected = selectedMainCategories.includes(mainCat)
                 const subs = categories.subs[mainCat] || []
-                const selectedSubsCount = subs.filter((sub) => selectedSubCategories.includes(sub)).length
+                const selectedSubsCount = (selectedSubCategories[mainCat] ?? []).length
 
                 return (
                   <div
@@ -860,7 +865,7 @@ const Detailed = () => {
                     {subs.length > 0 && (
                       <div className="ml-6 space-y-1 mt-2 pt-2 border-t border-gray-100">
                         {subs.map((subCat) => {
-                          const isSubSelected = selectedSubCategories.includes(subCat)
+                          const isSubSelected = (selectedSubCategories[mainCat] ?? []).includes(subCat)
                           
                           return (
                             <label 
@@ -872,7 +877,7 @@ const Detailed = () => {
                               <input
                                 type="checkbox"
                                 checked={isSubSelected}
-                                onChange={() => toggleSubCategory(subCat)}
+                                onChange={() => toggleSubCategory(mainCat, subCat)}
                                 disabled={!isMainSelected}
                                 className="w-3 h-3 text-teal border-gray-300 rounded focus:ring-teal disabled:cursor-not-allowed"
                               />
