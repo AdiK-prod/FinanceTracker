@@ -97,6 +97,7 @@ const Detailed = () => {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const hasRestoredFromUrl = useRef(false)
+  const hasInitializedCategorySelection = useRef(false)
 
   // Restore view state from URL on mount (e.g. when user clicks Back)
   useEffect(() => {
@@ -159,9 +160,11 @@ const Detailed = () => {
     fetchCategories()
   }, [user])
 
-  // Initialize all categories as selected (subs per main so same sub name under different mains is independent)
+  // Initialize all categories as selected once when categories first load (not when user clicks Deselect All)
   useEffect(() => {
-    if (categories.mains.length > 0 && selectedMainCategories.length === 0) {
+    if (categories.mains.length === 0 || hasInitializedCategorySelection.current) return
+    if (selectedMainCategories.length === 0) {
+      hasInitializedCategorySelection.current = true
       setSelectedMainCategories(categories.mains)
       setSelectedSubCategories(
         Object.fromEntries(
@@ -277,22 +280,20 @@ const Detailed = () => {
     `₪${Number(amount || 0).toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
 
   const toggleMainCategory = (category) => {
-    setSelectedMainCategories((prev) => {
-      if (prev.includes(category)) {
-        setSelectedSubCategories((prevSubs) => {
-          const next = { ...prevSubs }
-          delete next[category]
-          return next
-        })
-        return prev.filter((c) => c !== category)
-      } else {
-        setSelectedSubCategories((prevSubs) => ({
-          ...prevSubs,
-          [category]: [...(categories.subs[category] || [])],
-        }))
-        return [...prev, category]
-      }
-    })
+    if (selectedMainCategories.includes(category)) {
+      setSelectedMainCategories((prev) => prev.filter((c) => c !== category))
+      setSelectedSubCategories((prev) => {
+        const next = { ...prev }
+        delete next[category]
+        return next
+      })
+    } else {
+      setSelectedMainCategories((prev) => [...prev, category])
+      setSelectedSubCategories((prev) => ({
+        ...prev,
+        [category]: [...(categories.subs[category] || [])],
+      }))
+    }
   }
 
   const toggleSubCategory = (mainCat, subCat) => {
@@ -869,7 +870,7 @@ const Detailed = () => {
                           
                           return (
                             <label 
-                              key={subCat} 
+                              key={`${mainCat}-${subCat}`}
                               className={`flex items-center gap-2 cursor-pointer transition-opacity ${
                                 !isMainSelected ? 'opacity-40' : 'opacity-100'
                               }`}
