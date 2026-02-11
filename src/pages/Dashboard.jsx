@@ -227,8 +227,8 @@ Check browser console (F12) for full details.
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">Overview of your household spending</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-teal transition-colors focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-1">
+        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto min-w-0">
+          <label className="flex flex-shrink-0 items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-teal transition-colors focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-1">
             <input
               type="checkbox"
               checked={includeExceptional}
@@ -236,18 +236,20 @@ Check browser console (F12) for full details.
               className="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
             />
             <Star className="w-4 h-4 text-orange-500" />
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
               Include exceptional
             </span>
           </label>
-          <DateRangePicker
-            value={dateRange}
-            onChange={setDateRange}
-            baseDate={new Date()}
-          />
+          <div className="flex-shrink-0">
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              baseDate={new Date()}
+            />
+          </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             <Plus size={20} />
             Add Manually
@@ -255,7 +257,7 @@ Check browser console (F12) for full details.
           {import.meta.env.DEV && (
             <button
               onClick={runDiagnostics}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
               title="Run diagnostic to check income data and date filtering"
             >
               <Search size={20} />
@@ -264,7 +266,7 @@ Check browser console (F12) for full details.
           )}
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="btn-primary flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
+            className="flex-shrink-0 btn-primary flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
           >
             <Upload size={24} />
             Upload Expenses
