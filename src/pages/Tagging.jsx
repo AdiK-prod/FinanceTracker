@@ -713,6 +713,7 @@ const Tagging = () => {
       />
 
       <AmortizationSetupModal
+        key={amortizationSetupTransaction?.id ?? 'closed'}
         isOpen={!!amortizationSetupTransaction}
         onClose={() => setAmortizationSetupTransaction(null)}
         transaction={amortizationSetupTransaction}

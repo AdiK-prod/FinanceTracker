@@ -588,23 +588,30 @@ const Detailed = () => {
       ? aggregatedData.map(item => getColorForMonth(item.sortKey))
       : CHART_COLORS
 
-    // For line + secondary: one line per secondary series; need consistent keys and fill missing with 0
-    const secondaryKeys = chartType === 'line' && secondaryGroupBy
-      ? [...new Set(aggregatedData.flatMap((item) => (item.children || []).map((c) => c.sortKey)))]
-      : []
-    const secondaryKeyToLabel =
-      chartType === 'line' && secondaryGroupBy && aggregatedData.length > 0
-        ? Object.fromEntries(
-            aggregatedData.flatMap((item) => (item.children || []).map((c) => [c.sortKey, c.name]))
-          )
-        : {}
+    // For line + secondary: one line per secondary series. Use indexed keys (line_0, line_1) to avoid collision with "total"
+    const secondarySeries =
+      chartType === 'line' && secondaryGroupBy
+        ? (() => {
+            const keys = [...new Set(aggregatedData.flatMap((item) => (item.children || []).map((c) => c.sortKey)))]
+            const labelByKey = {}
+            aggregatedData.forEach((item) =>
+              (item.children || []).forEach((c) => {
+                if (labelByKey[c.sortKey] == null) labelByKey[c.sortKey] = c.name
+              })
+            )
+            return keys.map((sortKey, idx) => ({ key: `line_${idx}`, sortKey, label: labelByKey[sortKey] || sortKey }))
+          })()
+        : []
 
     const chartData = secondaryGroupBy 
-      ? (chartType === 'line' && secondaryKeys.length > 0
+      ? (chartType === 'line' && secondarySeries.length > 0
           ? aggregatedData.map((item) => {
               const row = { name: item.name }
-              secondaryKeys.forEach((k) => (row[k] = 0))
-              ;(item.children || []).forEach((c) => (row[c.sortKey] = c.total))
+              secondarySeries.forEach((s) => (row[s.key] = 0))
+              ;(item.children || []).forEach((c) => {
+                const s = secondarySeries.find((x) => x.sortKey === c.sortKey)
+                if (s) row[s.key] = c.total
+              })
               return row
             })
           : chartType === 'line'
@@ -675,17 +682,17 @@ const Detailed = () => {
               <YAxis />
               <Tooltip formatter={(value) => formatAmount(value)} />
               <Legend />
-              {secondaryGroupBy && secondaryKeys.length > 0 ? (
-                secondaryKeys.map((key, idx) => (
+              {secondaryGroupBy && secondarySeries.length > 0 ? (
+                secondarySeries.map((s, idx) => (
                   <Line
-                    key={key}
+                    key={s.key}
                     type="monotone"
-                    dataKey={key}
+                    dataKey={s.key}
                     stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                     strokeWidth={2}
                     dot={{ r: 4 }}
                     connectNulls={false}
-                    name={secondaryKeyToLabel[key] || key}
+                    name={s.label}
                   />
                 ))
               ) : (

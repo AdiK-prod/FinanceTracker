@@ -18,7 +18,6 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
   const [monthlyAmount, setMonthlyAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const didInitForOpenRef = useRef(false)
 
   const amount = transaction?.amount != null ? parseFloat(transaction.amount) : 0
   const txDate = transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date()
@@ -32,23 +31,23 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     monthOptions.push({ key: formatMonthKey(d), label: formatMonthOption(d) })
   }
 
-  // Init only when modal transitions from closed to open (never overwrite while user is editing)
+  // Init once when modal opens (transaction is set). No effect on transaction reference changes.
+  const initRef = useRef(false)
   useEffect(() => {
-    if (isOpen && transaction) {
-      if (!didInitForOpenRef.current) {
-        didInitForOpenRef.current = true
-        const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
-        setStartMonth(key)
-        setMonths(4)
-        setError('')
-        const amt = transaction.amount != null ? parseFloat(transaction.amount) : 0
-        const amounts = calculateMonthlyAmounts(amt, 4)
-        setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
-      }
-    } else {
-      didInitForOpenRef.current = false
+    if (!isOpen || !transaction) {
+      initRef.current = false
+      return
     }
-  }, [isOpen, transaction])
+    if (initRef.current) return
+    initRef.current = true
+    const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
+    setStartMonth(key)
+    setMonths(4)
+    setError('')
+    const amt = transaction.amount != null ? parseFloat(transaction.amount) : 0
+    const amounts = calculateMonthlyAmounts(amt, 4)
+    setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
+  }, [isOpen]) // intentionally omit transaction so we never re-run and overwrite user input
 
   // Recompute monthly amount when months change (user editing)
   useEffect(() => {
@@ -108,8 +107,8 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Amortize transaction</h2>
           <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
