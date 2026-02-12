@@ -588,19 +588,29 @@ const Detailed = () => {
       ? aggregatedData.map(item => getColorForMonth(item.sortKey))
       : CHART_COLORS
 
-    // For secondary grouping: pie/bar use flattened; line uses one series per secondary (multiple lines)
-    const chartData = secondaryGroupBy 
-      ? (chartType === 'line'
-          ? aggregatedData.map((item) => ({
-              name: item.name,
-              ...Object.fromEntries((item.children || []).map((c) => [c.sortKey, c.total])),
-            }))
-          : aggregatedData.flatMap((item) => item.children || []))
-      : aggregatedData
-
+    // For line + secondary: one line per secondary series; need consistent keys and fill missing with 0
     const secondaryKeys = chartType === 'line' && secondaryGroupBy
       ? [...new Set(aggregatedData.flatMap((item) => (item.children || []).map((c) => c.sortKey)))]
       : []
+    const secondaryKeyToLabel =
+      chartType === 'line' && secondaryGroupBy && aggregatedData.length > 0
+        ? Object.fromEntries(
+            aggregatedData.flatMap((item) => (item.children || []).map((c) => [c.sortKey, c.name]))
+          )
+        : {}
+
+    const chartData = secondaryGroupBy 
+      ? (chartType === 'line' && secondaryKeys.length > 0
+          ? aggregatedData.map((item) => {
+              const row = { name: item.name }
+              secondaryKeys.forEach((k) => (row[k] = 0))
+              ;(item.children || []).forEach((c) => (row[c.sortKey] = c.total))
+              return row
+            })
+          : chartType === 'line'
+            ? aggregatedData
+            : aggregatedData.flatMap((item) => item.children || []))
+      : aggregatedData
 
     switch (chartType) {
       case 'pie':
@@ -674,7 +684,8 @@ const Detailed = () => {
                     stroke={CHART_COLORS[idx % CHART_COLORS.length]}
                     strokeWidth={2}
                     dot={{ r: 4 }}
-                    name={key}
+                    connectNulls={false}
+                    name={secondaryKeyToLabel[key] || key}
                   />
                 ))
               ) : (

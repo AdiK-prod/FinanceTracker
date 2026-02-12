@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { calculateMonthlyAmounts } from '../utils/amortization'
 
@@ -18,6 +18,7 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
   const [monthlyAmount, setMonthlyAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const didInitForOpenRef = useRef(false)
 
   const amount = transaction?.amount != null ? parseFloat(transaction.amount) : 0
   const txDate = transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date()
@@ -31,17 +32,23 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     monthOptions.push({ key: formatMonthKey(d), label: formatMonthOption(d) })
   }
 
-  // Only init when modal opens or transaction id changes (not on every parent re-render)
+  // Init only when modal transitions from closed to open (never overwrite while user is editing)
   useEffect(() => {
-    if (!isOpen || !transaction) return
-    const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
-    setStartMonth(key)
-    setMonths(4)
-    setError('')
-    const amt = transaction?.amount != null ? parseFloat(transaction.amount) : 0
-    const amounts = calculateMonthlyAmounts(amt, 4)
-    setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
-  }, [isOpen, transaction?.id])
+    if (isOpen && transaction) {
+      if (!didInitForOpenRef.current) {
+        didInitForOpenRef.current = true
+        const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
+        setStartMonth(key)
+        setMonths(4)
+        setError('')
+        const amt = transaction.amount != null ? parseFloat(transaction.amount) : 0
+        const amounts = calculateMonthlyAmounts(amt, 4)
+        setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
+      }
+    } else {
+      didInitForOpenRef.current = false
+    }
+  }, [isOpen, transaction])
 
   // Recompute monthly amount when months change (user editing)
   useEffect(() => {
