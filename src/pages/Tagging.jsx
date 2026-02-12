@@ -4,6 +4,9 @@ import { Tag, Search, Filter, X, Upload, ChevronDown, Plus } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
 import UploadModal from '../components/UploadModal'
 import AddTransactionModal from '../components/AddTransactionModal'
+import AmortizationSetupModal from '../components/AmortizationSetupModal'
+import AmortizationDetailsModal from '../components/AmortizationDetailsModal'
+import AmortizationEditModal from '../components/AmortizationEditModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchAllExpenses } from '../utils/fetchAllRows'
@@ -34,6 +37,9 @@ const Tagging = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [amortizationSetupTransaction, setAmortizationSetupTransaction] = useState(null)
+  const [amortizationDetailsTransaction, setAmortizationDetailsTransaction] = useState(null)
+  const [amortizationEditTransaction, setAmortizationEditTransaction] = useState(null)
   const [successToast, setSuccessToast] = useState(null)
   const toastTimeoutRef = useRef(null)
 
@@ -287,10 +293,12 @@ const Tagging = () => {
     }
   }
 
-  const handleDeleteExpense = async (id, merchantName) => {
-    const confirmed = window.confirm(
-      `Delete expense from "${merchantName}"?\n\nThis action cannot be undone.`
-    )
+  const handleDeleteExpense = async (id, merchantName, expense) => {
+    const isAmortized = expense?.is_amortized
+    const msg = isAmortized
+      ? `Delete amortized transaction?\n\nThis transaction is amortized across ${expense.amortization_adjusted_months ?? expense.amortization_months} months. Deleting it will remove the original and all monthly allocations from reports.\n\nAre you sure?`
+      : `Delete expense from "${merchantName}"?\n\nThis action cannot be undone.`
+    const confirmed = window.confirm(msg)
 
     if (!confirmed) return
 
@@ -304,7 +312,6 @@ const Tagging = () => {
       return
     }
 
-    // Remove from local state
     setExpenses((prev) => prev.filter((exp) => exp.id !== id))
   }
 
@@ -662,8 +669,10 @@ const Tagging = () => {
         onUpdateExpense={handleUpdateExpense}
         onBulkUpdate={handleBulkUpdate}
         onToggleExceptional={handleToggleExceptional}
-        onDeleteExpense={handleDeleteExpense}
+        onDeleteExpense={(id, merchantName, exp) => handleDeleteExpense(id, merchantName, exp)}
         onBulkDelete={handleBulkDelete}
+        onOpenAmortizationSetup={(exp) => setAmortizationSetupTransaction(exp)}
+        onOpenAmortizationDetails={(exp) => setAmortizationDetailsTransaction(exp)}
         mainCategories={mainCategories}
         subCategories={subCategories}
       />
@@ -695,15 +704,35 @@ const Tagging = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={(counts) => {
-          // Show success toast with cleanup
           setSuccessToast(counts)
           if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
           toastTimeoutRef.current = setTimeout(() => setSuccessToast(null), 5000)
-
-          // Refresh data
           fetchExpenses()
           fetchCategories()
         }}
+      />
+
+      <AmortizationSetupModal
+        isOpen={!!amortizationSetupTransaction}
+        onClose={() => setAmortizationSetupTransaction(null)}
+        transaction={amortizationSetupTransaction}
+        onSaved={fetchExpenses}
+      />
+      <AmortizationDetailsModal
+        isOpen={!!amortizationDetailsTransaction}
+        onClose={() => setAmortizationDetailsTransaction(null)}
+        transaction={amortizationDetailsTransaction}
+        onCancelAmortization={fetchExpenses}
+        onEdit={(exp) => {
+          setAmortizationDetailsTransaction(null)
+          setAmortizationEditTransaction(exp)
+        }}
+      />
+      <AmortizationEditModal
+        isOpen={!!amortizationEditTransaction}
+        onClose={() => setAmortizationEditTransaction(null)}
+        transaction={amortizationEditTransaction}
+        onSaved={fetchExpenses}
       />
     </div>
   )

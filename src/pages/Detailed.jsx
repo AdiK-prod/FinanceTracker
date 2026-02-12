@@ -19,7 +19,7 @@ import { BarChart3, Download, LineChart as LineChartIcon, PieChart as PieChartIc
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import DateRangePicker from '../components/DateRangePicker'
-import { fetchAllExpenses } from '../utils/fetchAllRows'
+import { getTransactionsForRangeWithAmortization } from '../utils/amortization'
 import { formatDateDisplay, formatDateRangeDisplay, formatMonthYear, formatDateForDB } from '../utils/dateFormatters'
 import { parseDetailedStateFromUrl, buildDetailedUrlParams } from '../utils/viewStateUrl'
 
@@ -223,18 +223,17 @@ const Detailed = () => {
       return
     }
 
-    // Use paginated fetch to bypass Supabase 1000 row limit
     try {
-      const data = await fetchAllExpenses(supabase, user.id, {
-        dateFrom: dateRange?.from ? formatDateForDB(dateRange.from) : null,
-        dateTo: dateRange?.to ? formatDateForDB(dateRange.to) : null,
+      const dateFrom = dateRange?.from ? formatDateForDB(dateRange.from) : null
+      const dateTo = dateRange?.to ? formatDateForDB(dateRange.to) : null
+      const data = await getTransactionsForRangeWithAmortization(supabase, user.id, dateFrom, dateTo, {
         includeExceptional: filters.includeExceptional,
         minAmount: filters.minAmount ? parseFloat(filters.minAmount) : null,
         maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : null,
-        merchant: filters.merchant || null
+        merchant: filters.merchant || null,
       })
 
-      console.log(`✅ Fetched ${data.length} total transactions (paginated)`)
+      console.log(`✅ Fetched ${data.length} transactions (with amortization)`)
       
       // Client-side filter by categories (includes income which has NULL categories)
       let filtered = data || []

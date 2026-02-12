@@ -10,6 +10,8 @@ const ExpenseTable = ({
   onToggleExceptional,
   onDeleteExpense,
   onBulkDelete,
+  onOpenAmortizationSetup,
+  onOpenAmortizationDetails,
   isLoading,
   mainCategories = [],
   subCategories = {},
@@ -348,6 +350,9 @@ const ExpenseTable = ({
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Amortize
+                </th>
                 <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
@@ -368,12 +373,13 @@ const ExpenseTable = ({
                     <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
                     <td className="px-6 py-4"><div className="h-6 w-20 bg-gray-200 rounded-full" /></td>
                     <td className="px-6 py-4"><div className="h-6 w-20 bg-gray-200 rounded-full" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-16 bg-gray-200 rounded" /></td>
                     <td className="px-6 py-4"><div className="h-8 w-8 bg-gray-200 rounded" /></td>
                   </tr>
                 ))
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-6 py-12">
+                  <td colSpan={12} className="px-6 py-12">
                     <p className="text-sm text-gray-500">No expenses found.</p>
                   </td>
                 </tr>
@@ -559,9 +565,32 @@ const ExpenseTable = ({
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isIncome ? (
+                        <span className="text-xs text-gray-400">—</span>
+                      ) : expense.is_amortized ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 cursor-pointer hover:bg-blue-200"
+                          onClick={() => onOpenAmortizationDetails?.(expense)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenAmortizationDetails?.(expense) }}
+                        >
+                          🔄 Amortized ({expense.amortization_adjusted_months ?? expense.amortization_months} months
+                          {expense.amortization_status === 'adjusted' ? ', adjusted' : ''})
+                        </span>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          onChange={() => onOpenAmortizationSetup?.(expense)}
+                          className="rounded border-gray-300 focus:ring-2 focus:ring-teal-500"
+                          aria-label="Amortize this transaction"
+                        />
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button
-                        onClick={() => onDeleteExpense?.(expense.id, expense.merchant)}
+                        onClick={() => onDeleteExpense?.(expense.id, expense.merchant, expense)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Delete expense"
                       >

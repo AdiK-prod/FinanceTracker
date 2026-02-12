@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatDateDisplay, formatDateRangeDisplay, formatDateForDB } from '../utils/dateFormatters'
 import { diagnoseIncomeData, diagnoseExpenseQuery } from '../utils/diagnostics'
 import { fetchAllExpenses } from '../utils/fetchAllRows'
+import { getTransactionsForRangeWithAmortization } from '../utils/amortization'
 import { parseDashboardStateFromUrl, buildDashboardUrlParams } from '../utils/viewStateUrl'
 
 const Dashboard = () => {
@@ -95,16 +96,18 @@ Check browser console (F12) for full details.
       setError('')
       const from = dateRange?.from ? formatDateForDB(dateRange.from) : null
       const to = dateRange?.to ? formatDateForDB(dateRange.to) : null
+      if (!from || !to) {
+        setExpenses([])
+        setIsLoading(false)
+        return
+      }
 
       try {
-        // Use paginated fetch to bypass Supabase 1000 row limit
-        const data = await fetchAllExpenses(supabase, user.id, {
-          dateFrom: from,
-          dateTo: to,
-          includeExceptional: includeExceptional
+        // Use amortization-aware fetch so monthly totals include virtual allocations (not full amortized amount)
+        const data = await getTransactionsForRangeWithAmortization(supabase, user.id, from, to, {
+          includeExceptional: includeExceptional,
         })
-        
-        console.log(`✅ Dashboard fetched ${data.length} total transactions (paginated)`)
+        console.log(`✅ Dashboard fetched ${data.length} transactions (with amortization)`)
         setExpenses(data || [])
       } catch (fetchError) {
         console.error('Error fetching expenses:', fetchError)
