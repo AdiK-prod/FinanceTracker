@@ -31,16 +31,19 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     monthOptions.push({ key: formatMonthKey(d), label: formatMonthOption(d) })
   }
 
+  // Only init when modal opens or transaction id changes (not on every parent re-render)
   useEffect(() => {
     if (!isOpen || !transaction) return
-    const key = formatMonthKey(txDate)
+    const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
     setStartMonth(key)
     setMonths(4)
     setError('')
-    const amounts = calculateMonthlyAmounts(amount, 4)
+    const amt = transaction?.amount != null ? parseFloat(transaction.amount) : 0
+    const amounts = calculateMonthlyAmounts(amt, 4)
     setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
-  }, [isOpen, transaction, amount, txDate])
+  }, [isOpen, transaction?.id])
 
+  // Recompute monthly amount when months change (user editing)
   useEffect(() => {
     if (months < 1 || amount <= 0) return
     const amounts = calculateMonthlyAmounts(amount, months)

@@ -26,7 +26,7 @@ export default function AmortizationEditModal({ isOpen, onClose, transaction, on
     if (!isOpen || !transaction) return
     setAdjustedMonths(transaction.amortization_adjusted_months ?? transaction.amortization_months ?? 0)
     setError('')
-  }, [isOpen, transaction])
+  }, [isOpen, transaction?.id])
 
   const validMonths = adjustedMonths >= minMonths && adjustedMonths <= originalMonths
   const newTotal = validMonths ? monthlyAmount * adjustedMonths : 0

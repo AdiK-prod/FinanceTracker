@@ -58,7 +58,7 @@ const getColorForMonth = (monthKey) => {
 
 const Detailed = () => {
   const { user } = useAuth()
-  const [expenses, setExpenses] = useState([])
+  const [rawExpenses, setRawExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
@@ -190,38 +190,23 @@ const Detailed = () => {
         clearTimeout(fetchTimeoutRef.current)
       }
     }
-  }, [user, dateRange, filters, selectedMainCategories, selectedSubCategories, categories])
+  }, [user, dateRange, filters, categories])
 
   const fetchExpenses = async () => {
     if (!user) return
     if (categories.mains.length === 0) {
-      // No categories yet (e.g. new user) – don't block; show empty state
-      setExpenses([])
+      setRawExpenses([])
       setLoading(false)
       setIsRefreshing(false)
       return
     }
-    
-    // Don't show full loading state if already have data - use subtle refresh instead
-    if (expenses.length > 0) {
+
+    if (rawExpenses.length > 0) {
       setIsRefreshing(true)
     } else {
       setLoading(true)
     }
     setError('')
-
-    // Only apply category filter if not all categories selected
-    // NOTE: Category filtering is done CLIENT-SIDE to include income transactions
-    // Income has main_category = NULL, so database filtering would exclude them
-    const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
-    
-    if (selectedMainCategories.length === 0) {
-      // No categories selected = show nothing
-      setExpenses([])
-      setLoading(false)
-      setIsRefreshing(false)
-      return
-    }
 
     try {
       const dateFrom = dateRange?.from ? formatDateForDB(dateRange.from) : null
@@ -232,48 +217,47 @@ const Detailed = () => {
         maxAmount: filters.maxAmount ? parseFloat(filters.maxAmount) : null,
         merchant: filters.merchant || null,
       })
-
       console.log(`✅ Fetched ${data.length} transactions (with amortization)`)
-      
-      // Client-side filter by categories (includes income which has NULL categories)
-      let filtered = data || []
-
-      // Filter by main categories (but always include income transactions)
-      if (!allCategoriesSelected && selectedMainCategories.length > 0) {
-        filtered = filtered.filter((exp) =>
-          exp.transaction_type === 'income' || // Always include income
-          selectedMainCategories.includes(exp.main_category)
-        )
-      }
-
-      // Filter by sub-categories per main (same sub name under different mains is independent)
-      filtered = filtered.filter((exp) => {
-        if (exp.transaction_type === 'income') return true
-        if (!exp.main_category) return true
-        if (!exp.sub_category) return true
-        const selectedForMain = selectedSubCategories[exp.main_category]
-        if (selectedForMain === undefined) return true // not yet filtering this main
-        return selectedForMain.includes(exp.sub_category)
-      })
-
-      // Exclude uncategorized expenses (keep income; expenses must have main_category)
-      if (filters.excludeUncategorized) {
-        filtered = filtered.filter((exp) =>
-          exp.transaction_type === 'income' || (exp.main_category != null && exp.main_category !== '')
-        )
-      }
-
-      setExpenses(filtered)
-      setLoading(false)
-      setIsRefreshing(false)
+      setRawExpenses(data || [])
     } catch (fetchError) {
       console.error('Error fetching expenses:', fetchError)
       setError(fetchError.message || 'Failed to fetch expenses')
-      setExpenses([])
+      setRawExpenses([])
+    } finally {
       setLoading(false)
       setIsRefreshing(false)
     }
   }
+
+  // Apply category filter client-side so toggling categories does not refetch
+  const expenses = useMemo(() => {
+    if (selectedMainCategories.length === 0) return []
+    const allCategoriesSelected = selectedMainCategories.length === categories.mains.length
+    let filtered = rawExpenses
+
+    if (!allCategoriesSelected && selectedMainCategories.length > 0) {
+      filtered = filtered.filter((exp) =>
+        exp.transaction_type === 'income' ||
+        selectedMainCategories.includes(exp.main_category)
+      )
+    }
+
+    filtered = filtered.filter((exp) => {
+      if (exp.transaction_type === 'income') return true
+      if (!exp.main_category) return true
+      if (!exp.sub_category) return true
+      const selectedForMain = selectedSubCategories[exp.main_category]
+      if (selectedForMain === undefined) return true
+      return selectedForMain.includes(exp.sub_category)
+    })
+
+    if (filters.excludeUncategorized) {
+      filtered = filtered.filter((exp) =>
+        exp.transaction_type === 'income' || (exp.main_category != null && exp.main_category !== '')
+      )
+    }
+    return filtered
+  }, [rawExpenses, selectedMainCategories, selectedSubCategories, categories.mains.length, filters.excludeUncategorized])
 
   const formatAmount = (amount) =>
     `₪${Number(amount || 0).toLocaleString('he-IL', { minimumFractionDigits: 2 })}`
@@ -604,10 +588,19 @@ const Detailed = () => {
       ? aggregatedData.map(item => getColorForMonth(item.sortKey))
       : CHART_COLORS
 
-    // For secondary grouping, flatten the data for chart display
+    // For secondary grouping: pie/bar use flattened; line uses one series per secondary (multiple lines)
     const chartData = secondaryGroupBy 
-      ? aggregatedData.flatMap(item => item.children || [])
+      ? (chartType === 'line'
+          ? aggregatedData.map((item) => ({
+              name: item.name,
+              ...Object.fromEntries((item.children || []).map((c) => [c.sortKey, c.total])),
+            }))
+          : aggregatedData.flatMap((item) => item.children || []))
       : aggregatedData
+
+    const secondaryKeys = chartType === 'line' && secondaryGroupBy
+      ? [...new Set(aggregatedData.flatMap((item) => (item.children || []).map((c) => c.sortKey)))]
+      : []
 
     switch (chartType) {
       case 'pie':
@@ -672,14 +665,28 @@ const Detailed = () => {
               <YAxis />
               <Tooltip formatter={(value) => formatAmount(value)} />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="total" 
-                stroke="#0d9488" 
-                strokeWidth={3}
-                dot={{ fill: '#0d9488', r: 5 }}
-                name="Total Spending" 
-              />
+              {secondaryGroupBy && secondaryKeys.length > 0 ? (
+                secondaryKeys.map((key, idx) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    name={key}
+                  />
+                ))
+              ) : (
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#0d9488" 
+                  strokeWidth={3}
+                  dot={{ fill: '#0d9488', r: 5 }}
+                  name="Total Spending" 
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         )
