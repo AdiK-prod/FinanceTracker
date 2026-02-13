@@ -22,16 +22,16 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
   const amount = transaction?.amount != null ? parseFloat(transaction.amount) : 0
   const txDate = transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date()
 
-  // Month options: from transaction month to 12 months ahead
+  // Flexible start-month options: 24 months back to 36 months ahead from today (not tied to expense date)
   const monthOptions = []
-  const start = new Date(txDate.getFullYear(), txDate.getMonth(), 1)
-  for (let i = 0; i <= 12; i++) {
-    const d = new Date(start)
-    d.setMonth(d.getMonth() + i)
+  const today = new Date()
+  const rangeStart = new Date(today.getFullYear(), today.getMonth() - 24, 1)
+  const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 36, 1)
+  for (let d = new Date(rangeStart); d <= rangeEnd; d.setMonth(d.getMonth() + 1)) {
     monthOptions.push({ key: formatMonthKey(d), label: formatMonthOption(d) })
   }
 
-  // Init once when modal opens (transaction is set). No effect on transaction reference changes.
+  // Init once when modal opens: default start month = expense month, default months = 1 (user chooses).
   const initRef = useRef(false)
   useEffect(() => {
     if (!isOpen || !transaction) {
@@ -40,12 +40,12 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     }
     if (initRef.current) return
     initRef.current = true
-    const key = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
-    setStartMonth(key)
-    setMonths(4)
-    setError('')
+    const expenseMonthKey = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
     const amt = transaction.amount != null ? parseFloat(transaction.amount) : 0
-    const amounts = calculateMonthlyAmounts(amt, 4)
+    setStartMonth(monthOptions.some((o) => o.key === expenseMonthKey) ? expenseMonthKey : monthOptions[0]?.key ?? expenseMonthKey)
+    setMonths(1)
+    setError('')
+    const amounts = calculateMonthlyAmounts(amt, 1)
     setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
   }, [isOpen]) // intentionally omit transaction so we never re-run and overwrite user input
 
