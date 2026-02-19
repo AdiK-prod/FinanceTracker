@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Tag, Search, Filter, X, Upload, ChevronDown, Plus } from 'lucide-react'
 import ExpenseTable from '../components/ExpenseTable'
 import UploadModal from '../components/UploadModal'
@@ -13,7 +13,6 @@ import { fetchAllExpenses } from '../utils/fetchAllRows'
 import { parseTaggingStateFromUrl, buildTaggingUrlParams } from '../utils/viewStateUrl'
 
 const Tagging = () => {
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [expenses, setExpenses] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -122,10 +121,6 @@ const Tagging = () => {
   useEffect(() => {
     fetchCategories()
   }, [user])
-
-  const handleSaveAndContinue = () => {
-    navigate('/dashboard')
-  }
 
   const filteredExpenses = expenses.filter((expense) => {
     if (filters.searchMerchant) {
@@ -682,15 +677,6 @@ const Tagging = () => {
           {error}
         </div>
       )}
-
-      <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleSaveAndContinue}
-          className="btn-primary"
-        >
-          Save & Continue
-        </button>
-      </div>
 
       {/* Upload Modal */}
       <UploadModal

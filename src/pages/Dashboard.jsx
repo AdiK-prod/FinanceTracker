@@ -250,13 +250,6 @@ Check browser console (F12) for full details.
               baseDate={new Date()}
             />
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
-          >
-            <Plus size={20} />
-            Add Manually
-          </button>
           {import.meta.env.DEV && (
             <button
               onClick={runDiagnostics}
@@ -396,10 +389,6 @@ Check browser console (F12) for full details.
           <p className="text-gray-600 mb-2">Add your first transaction or upload a CSV file to see your dashboard here.</p>
           <p className="text-sm text-gray-500 mb-4">Income, expenses, and category breakdown will appear once you have data.</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => setShowAddModal(true)} className="btn-secondary flex items-center gap-2">
-              <Plus size={20} />
-              Add Manually
-            </button>
             <button onClick={() => setIsUploadOpen(true)} className="btn-primary flex items-center gap-2">
               <Upload size={20} />
               Upload File
