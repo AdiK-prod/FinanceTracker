@@ -1,7 +1,7 @@
 /** Layout with expand/collapse sidebar (desktop); preference persisted in localStorage. */
 import { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Tag, PieChart, Filter, Tags, Menu, X, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Tag, PieChart, Filter, Tags, Menu, X, PanelLeftClose, PanelLeft, FileCode } from 'lucide-react'
 import UserMenu from './UserMenu'
 
 const SIDEBAR_COLLAPSED_KEY = 'finance-tracker-sidebar-collapsed'
@@ -28,6 +28,7 @@ const Layout = () => {
     { path: '/tagging', label: 'Tagging', icon: Tag },
     { path: '/detailed', label: 'Detailed', icon: Filter },
     { path: '/categories', label: 'Categories', icon: Tags },
+    { path: '/temp', label: 'Temp', icon: FileCode },
   ]
 
   const isActive = (path) => location.pathname === path
