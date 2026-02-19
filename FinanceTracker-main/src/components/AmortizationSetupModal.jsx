@@ -1,3 +1,4 @@
+/** Amortize: monthly amount is auto-calculated only (no user override). */
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { calculateMonthlyAmounts } from '../utils/amortization'

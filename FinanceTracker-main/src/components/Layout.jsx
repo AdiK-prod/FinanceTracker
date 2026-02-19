@@ -1,3 +1,4 @@
+/** Layout with expand/collapse sidebar (desktop); preference persisted in localStorage. */
 import { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Tag, PieChart, Filter, Tags, Menu, X, PanelLeftClose, PanelLeft } from 'lucide-react'
