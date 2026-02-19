@@ -392,78 +392,62 @@ const Tagging = () => {
         </div>
       )}
       
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50">
-              <Tag size={24} className="text-teal-600" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Tag Expenses</h1>
-              <p className="text-sm font-medium text-gray-600">
-            Review and categorize your expenses. Items highlighted in yellow need your attention.
-              </p>
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 font-semibold transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="font-medium">Add Manually</span>
-            </button>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-            >
-              <Upload className="w-5 h-5" />
-              <span className="font-medium">Upload Expenses</span>
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Tag Expenses</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Review and categorize your expenses.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-outline-primary flex items-center gap-1.5 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add Manually
+          </button>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="btn-primary flex items-center gap-1.5 text-sm"
+          >
+            <Upload className="w-4 h-4" />
+            Upload
+          </button>
         </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by merchant name..."
-                value={filters.searchMerchant}
-                onChange={(e) => setFilters({ ...filters, searchMerchant: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal"
-              />
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by merchant..."
+              value={filters.searchMerchant}
+              onChange={(e) => setFilters({ ...filters, searchMerchant: e.target.value })}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors font-medium ${
+              className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg transition-colors text-sm font-medium ${
                 hasActiveFilters
-                  ? 'border-teal-600 bg-teal-50 text-teal-700 shadow-sm'
-                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+                  ? 'border-teal-500 bg-teal-50 text-teal-700'
+                  : 'border-gray-200 hover:bg-gray-50 text-gray-600'
               }`}
             >
               <Filter className="w-4 h-4" />
-              <span className="text-sm">Filters</span>
+              Filters
               {hasActiveFilters && (
-                <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                <span className="px-1.5 py-0.5 bg-teal-600 text-white text-xs font-bold rounded-full leading-none">
                   {activeFilterCount}
                 </span>
               )}
-              <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
-          </div>
-          <div className="text-sm text-gray-600 flex items-center gap-2">
-            <span>Showing {filteredExpenses.length} of {expenses.length} transactions</span>
-            {filters.showOnlyMissingSubCategory && (
-              <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
-                Missing sub-category: {filteredExpenses.length}
-              </span>
-            )}
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              {filteredExpenses.length} / {expenses.length}
+            </span>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Upload, X, Wallet, Receipt, TrendingUp, Star, Plus, Search } from 'lucide-react'
+import { Upload, X, Wallet, Receipt, TrendingUp, TrendingDown, ArrowUpRight, Star, Plus, Search } from 'lucide-react'
 import PieChartComponent from '../components/PieChart'
 import DateRangePicker from '../components/DateRangePicker'
 import UploadZone from '../components/UploadZone'
@@ -225,157 +225,105 @@ Check browser console (F12) for full details.
       )}
       
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Overview of your household spending</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Overview of your household spending</p>
         </div>
-        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto min-w-0">
-          <label className="flex flex-shrink-0 items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-teal transition-colors focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-1.5 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors text-sm font-medium text-gray-600">
             <input
               type="checkbox"
               checked={includeExceptional}
               onChange={(e) => setIncludeExceptional(e.target.checked)}
-              className="w-4 h-4 text-teal border-gray-300 rounded focus:ring-teal"
+              className="w-3.5 h-3.5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
             />
-            <Star className="w-4 h-4 text-orange-500" />
-            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              Include exceptional
-            </span>
+            <Star className="w-3.5 h-3.5 text-amber-500" />
+            <span className="whitespace-nowrap">Exceptional</span>
           </label>
-          <div className="flex-shrink-0">
-            <DateRangePicker
-              value={dateRange}
-              onChange={setDateRange}
-              baseDate={new Date()}
-            />
-          </div>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            baseDate={new Date()}
+          />
           {import.meta.env.DEV && (
             <button
               onClick={runDiagnostics}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors shadow-sm"
-              title="Run diagnostic to check income data and date filtering"
+              className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors"
+              title="Run diagnostic"
             >
-              <Search size={20} />
-              Diagnose Data
+              <Search size={15} />
+              Diagnose
             </button>
           )}
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="flex-shrink-0 btn-primary flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2"
+            className="btn-primary flex items-center gap-1.5 text-sm"
           >
-            <Upload size={24} />
-            Upload Expenses
+            <Upload size={16} />
+            Upload
           </button>
         </div>
       </div>
 
       {!includeExceptional && (
-        <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <p className="text-sm font-semibold text-orange-900">
-                Exceptional transactions excluded
-              </p>
-              <p className="text-xs text-orange-700 mt-1">
-                Showing only regular income and expenses. Toggle above to include one-time transactions.
-              </p>
-            </div>
-          </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+          <Star className="w-4 h-4 text-amber-500 shrink-0" />
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Exceptional transactions excluded.</span>{' '}
+            Toggle "Exceptional" above to include one-time transactions.
+          </p>
         </div>
       )}
 
-      {/* Income/Expense/Balance Cards */}
+      {/* Summary Cards */}
       {isLoading ? (
-        <div className="animate-pulse grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-40 bg-gray-200 rounded-xl" />
-          <div className="h-40 bg-gray-200 rounded-xl" />
-          <div className="h-40 bg-gray-200 rounded-xl" />
+        <div className="animate-pulse grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="h-28 bg-gray-200 rounded-xl" />
+          <div className="h-28 bg-gray-200 rounded-xl" />
+          <div className="h-28 bg-gray-200 rounded-xl" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Income Card */}
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-300 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl" role="img" aria-label="Money bag">💰</span>
-                  <p className="text-sm font-semibold text-green-700 uppercase tracking-wide">
-                    Total Income
-                  </p>
-                </div>
-                <p className="text-3xl font-bold text-green-900 mb-2">
-                  {formatAmount(incomeTotal)}
-                </p>
-                <p className="text-xs text-green-600">
-                  {incomeCount} transaction{incomeCount !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-2xl shadow-lg" aria-hidden="true">
-                💵
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Income */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
+            <div className="p-3 bg-emerald-50 rounded-xl shrink-0">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Income</p>
+              <p className="text-xl font-bold text-gray-900 mt-0.5 truncate">{formatAmount(incomeTotal)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{incomeCount} transaction{incomeCount !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          
-          {/* Expense Card */}
-          <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border-2 border-red-300 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl" role="img" aria-label="Flying money">💸</span>
-                  <p className="text-sm font-semibold text-red-700 uppercase tracking-wide">
-                    Total Expenses
-                  </p>
-                </div>
-                <p className="text-3xl font-bold text-red-900 mb-2">
-                  {formatAmount(expenseTotal)}
-                </p>
-                <p className="text-xs text-red-600">
-                  {expenseCount} transaction{expenseCount !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg" aria-hidden="true">
-                🛒
-              </div>
+
+          {/* Expenses */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
+            <div className="p-3 bg-red-50 rounded-xl shrink-0">
+              <TrendingDown className="w-5 h-5 text-red-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Expenses</p>
+              <p className="text-xl font-bold text-gray-900 mt-0.5 truncate">{formatAmount(expenseTotal)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{expenseCount} transaction{expenseCount !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          
-          {/* Net Balance Card */}
-          <div className={`rounded-xl p-6 border-2 shadow-sm hover:shadow-md transition-shadow ${
-            netBalance >= 0
-              ? 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-300'
-              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-300'
-          }`}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl" role="img" aria-label={netBalance >= 0 ? 'Chart going up' : 'Chart going down'}>{netBalance >= 0 ? '📈' : '📉'}</span>
-                  <p className={`text-sm font-semibold uppercase tracking-wide ${
-                    netBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
-                  }`}>
-                    Net Balance
-                  </p>
-                </div>
-                <p className={`text-3xl font-bold mb-2 ${
-                  netBalance >= 0 ? 'text-blue-900' : 'text-orange-900'
-                }`}>
-                  {netBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(netBalance))}
-                </p>
-                <p className={`text-xs font-medium ${
-                  netBalance >= 0 ? 'text-blue-600' : 'text-orange-600'
-                }`}>
-                  {netBalance >= 0 
-                    ? `Surplus: ${((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% saved`
-                    : `Deficit: ${Math.abs((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% overspent`
-                  }
-                </p>
-              </div>
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg ${
-                netBalance >= 0 ? 'bg-blue-500' : 'bg-orange-500'
-              }`} aria-hidden="true">
-                {netBalance >= 0 ? '✅' : '⚠️'}
-              </div>
+
+          {/* Net Balance */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
+            <div className={`p-3 rounded-xl shrink-0 ${netBalance >= 0 ? 'bg-teal-50' : 'bg-amber-50'}`}>
+              <ArrowUpRight className={`w-5 h-5 ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-500 rotate-90'}`} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Net Balance</p>
+              <p className={`text-xl font-bold mt-0.5 truncate ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
+                {netBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(netBalance))}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {netBalance >= 0
+                  ? `${((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% saved`
+                  : `${Math.abs((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% overspent`}
+              </p>
             </div>
           </div>
         </div>
@@ -383,41 +331,32 @@ Check browser console (F12) for full details.
 
       {/* Empty State */}
       {!isLoading && expenses.length === 0 && (
-        <div className="card text-center py-12">
-          <Wallet className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions yet</h3>
-          <p className="text-gray-600 mb-2">Add your first transaction or upload a CSV file to see your dashboard here.</p>
-          <p className="text-sm text-gray-500 mb-4">Income, expenses, and category breakdown will appear once you have data.</p>
-          <div className="flex gap-3 justify-center">
-            <button onClick={() => setIsUploadOpen(true)} className="btn-primary flex items-center gap-2">
-              <Upload size={20} />
-              Upload File
-            </button>
-          </div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm text-center py-14 px-6">
+          <Wallet className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">No transactions found</h3>
+          <p className="text-sm text-gray-500 mb-5">Upload a CSV file to populate your dashboard.</p>
+          <button onClick={() => setIsUploadOpen(true)} className="btn-primary inline-flex items-center gap-2 text-sm">
+            <Upload size={16} />
+            Upload File
+          </button>
         </div>
       )}
 
-      {/* Category Filter Pills - Expenses Only */}
+      {/* Category pills */}
       {expenses.length > 0 && categoryData.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Expense Breakdown by Category</h2>
-          <div className="flex flex-wrap gap-3">
-          {categoryData.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => handleCategoryPillClick(item.name)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedCategory === item.name
-                  ? 'bg-teal text-white shadow-sm'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-teal-300'
-              }`}
-            >
-              <span className="font-medium">{item.name}</span>
-              <span className={`ml-2 ${selectedCategory === item.name ? 'text-white' : 'text-teal-600'}`}>
-                {formatAmount(item.value)}
-              </span>
-            </button>
-          ))}
+        <div>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Expense Breakdown</h2>
+          <div className="flex flex-wrap gap-2">
+            {categoryData.map((item) => (
+              <button
+                key={item.name}
+                onClick={() => handleCategoryPillClick(item.name)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-white border border-gray-200 text-gray-700 hover:border-teal-400 hover:text-teal-700"
+              >
+                {item.name}
+                <span className="ml-1.5 text-teal-600 font-semibold">{formatAmount(item.value)}</span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -441,16 +380,13 @@ Check browser console (F12) for full details.
 
         {/* Recent Transactions */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Latest Activity</h2>
-              <p className="text-sm text-gray-600">Recent transactions</p>
-            </div>
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Latest Activity</h2>
             <button
               onClick={() => navigate('/tagging')}
-              className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+              className="text-xs text-teal-600 hover:text-teal-700 font-semibold flex items-center gap-1"
             >
-              View All →
+              View all <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
           

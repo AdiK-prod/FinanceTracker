@@ -31,58 +31,61 @@ const Layout = () => {
 
   const isActive = (path) => location.pathname === path
 
-  const handleNavClick = () => {
-    setIsMobileMenuOpen(false)
-  }
-
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
           onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Sidebar - Desktop: expand/collapse, Mobile: slide-in */}
+      {/* Sidebar */}
       <aside className={`
         fixed md:static inset-y-0 left-0 z-50 flex flex-col
-        bg-gradient-to-b from-gray-900 to-gray-800 text-white
+        bg-gray-950 text-white shrink-0
         transform transition-[transform,width] duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        w-72 ${sidebarCollapsed ? 'md:w-[4.5rem]' : ''}
+        w-64 ${sidebarCollapsed ? 'md:w-[3.75rem]' : ''}
       `}>
         {/* Logo */}
-        <div className={`p-4 border-b border-white/10 flex items-center shrink-0 ${sidebarCollapsed ? 'md:justify-center md:px-2' : 'justify-between md:p-6'}`}>
+        <div className={`h-16 flex items-center shrink-0 border-b border-white/[0.06] px-4 ${sidebarCollapsed ? 'md:justify-center md:px-0' : 'justify-between'}`}>
           {sidebarCollapsed ? (
             <>
-              <div className="min-w-0 md:hidden">
-                <h1 className="text-2xl font-bold text-white truncate">Finance Tracker</h1>
-                <p className="text-sm text-gray-300 mt-1">Household Spending</p>
+              <div className="flex items-center gap-2 md:hidden">
+                <div className="w-7 h-7 bg-teal-500 rounded-md flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-white">FT</span>
+                </div>
+                <span className="font-bold text-white text-base">Finance Tracker</span>
               </div>
-              <span className="text-lg font-bold text-white hidden md:inline">FT</span>
+              <div className="w-7 h-7 bg-teal-500 rounded-md items-center justify-center shrink-0 hidden md:flex">
+                <span className="text-xs font-black text-white">FT</span>
+              </div>
             </>
           ) : (
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-white truncate">Finance Tracker</h1>
-              <p className="text-sm text-gray-300 mt-1">Household Spending</p>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 bg-teal-500 rounded-md flex items-center justify-center shrink-0">
+                <span className="text-xs font-black text-white">FT</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate leading-tight">Finance Tracker</p>
+                <p className="text-xs text-gray-400 leading-tight">Household Spending</p>
+              </div>
             </div>
           )}
-          {/* Close button for mobile */}
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden p-2 text-gray-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors shrink-0 ml-2"
+            className="md:hidden p-1.5 text-gray-400 hover:text-white rounded-md hover:bg-white/10 transition-colors shrink-0"
             aria-label="Close navigation menu"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-hidden" role="navigation" aria-label="Main navigation">
-          <ul className="space-y-2">
+        <nav className="flex-1 py-3 px-2 overflow-hidden" role="navigation" aria-label="Main navigation">
+          <ul className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
@@ -90,20 +93,20 @@ const Layout = () => {
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    onClick={handleNavClick}
+                    onClick={() => setIsMobileMenuOpen(false)}
                     title={sidebarCollapsed ? item.label : undefined}
-                    className={`flex items-center rounded-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                      sidebarCollapsed ? 'justify-center px-0 py-3 md:px-0' : 'gap-3 px-4 py-3'
+                    className={`flex items-center rounded-lg transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 focus:ring-offset-gray-950 ${
+                      sidebarCollapsed ? 'justify-center p-2.5 md:p-2.5' : 'gap-3 px-3 py-2.5'
                     } ${
                       active
-                        ? 'bg-teal text-white shadow-sm'
-                        : 'text-gray-200 hover:bg-white/10'
+                        ? 'bg-teal-600 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-white/[0.07]'
                     }`}
                     aria-current={active ? 'page' : undefined}
                   >
-                    <Icon size={24} aria-hidden="true" className="shrink-0" />
+                    <Icon size={18} aria-hidden="true" className="shrink-0" />
                     {!sidebarCollapsed && (
-                      <span className="font-medium text-base truncate">{item.label}</span>
+                      <span className="font-medium text-sm truncate">{item.label}</span>
                     )}
                   </Link>
                 </li>
@@ -112,20 +115,20 @@ const Layout = () => {
           </ul>
         </nav>
 
-        {/* Expand/Collapse toggle - desktop only */}
-        <div className="p-3 border-t border-white/10 hidden md:block">
+        {/* Collapse toggle – desktop only */}
+        <div className="p-2 border-t border-white/[0.06] hidden md:block">
           <button
             type="button"
             onClick={() => setSidebarCollapsed((c) => !c)}
-            className={`flex items-center w-full rounded-lg py-2.5 transition-colors text-gray-300 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
+            className={`flex items-center w-full rounded-lg py-2 transition-colors text-gray-400 hover:text-white hover:bg-white/[0.07] focus:outline-none ${sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3'}`}
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? (
-              <PanelLeft size={22} aria-hidden="true" />
+              <PanelLeft size={18} aria-hidden="true" />
             ) : (
               <>
-                <PanelLeftClose size={22} aria-hidden="true" />
-                <span className="font-medium text-sm">Collapse</span>
+                <PanelLeftClose size={18} aria-hidden="true" />
+                <span className="text-xs font-medium">Collapse</span>
               </>
             )}
           </button>
@@ -133,23 +136,28 @@ const Layout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-gray-50 bg-[radial-gradient(circle_at_1px_1px,#e5e7eb_1px,transparent_0)] [background-size:24px_24px]">
-        <div className="max-w-7xl mx-auto p-4 md:p-8 page-fade">
-          {/* Mobile Header with Hamburger */}
-          <div className="flex items-center justify-between mb-6 md:hidden">
+      <main className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 md:px-8 md:py-8 page-fade">
+          {/* Mobile top bar */}
+          <div className="flex items-center justify-between mb-5 md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               aria-label="Open navigation menu"
               aria-expanded={isMobileMenuOpen}
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
-            <div className="text-lg font-bold text-gray-900">Finance Tracker</div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-teal-500 rounded-md flex items-center justify-center">
+                <span className="text-[10px] font-black text-white">FT</span>
+              </div>
+              <span className="text-sm font-bold text-gray-900">Finance Tracker</span>
+            </div>
             <UserMenu />
           </div>
 
-          {/* Desktop: Just UserMenu aligned right */}
+          {/* Desktop top bar */}
           <div className="hidden md:flex justify-end mb-6">
             <UserMenu />
           </div>
