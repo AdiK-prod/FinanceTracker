@@ -1,4 +1,3 @@
-/** Amortize: monthly amount is auto-calculated only (no user override). */
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { calculateMonthlyAmounts } from '../utils/amortization'
@@ -21,7 +20,6 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
 
   const amount = transaction?.amount != null ? parseFloat(transaction.amount) : 0
 
-  // Flexible start-month options: 24 months back to 36 months ahead from today (not tied to expense date)
   const monthOptions = []
   const today = new Date()
   const rangeStart = new Date(today.getFullYear(), today.getMonth() - 24, 1)
@@ -44,7 +42,7 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     setStartMonth(monthOptions.some((o) => o.key === expenseMonthKey) ? expenseMonthKey : monthOptions[0]?.key ?? expenseMonthKey)
     setMonths(1)
     setError('')
-  }, [isOpen]) // intentionally omit transaction so we never re-run and overwrite user input
+  }, [isOpen])
 
   // Auto-calculated monthly amounts (app deviation only)
   const amounts = months >= 1 && amount > 0 ? calculateMonthlyAmounts(amount, months) : []

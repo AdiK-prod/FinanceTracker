@@ -1,0 +1,11 @@
+---
+description: Keep code clean and organized; remove redundant code
+alwaysApply: true
+---
+
+# Code cleanliness
+
+- **Keep code clean and organized.** Prefer clear structure and consistent formatting.
+- **Remove redundant code.** When editing, delete unused imports, variables, comments, and dead code. Do not leave behind obsolete logic or commented-out blocks.
+- **Prefer minimal comments.** Only add comments when they explain non-obvious behavior or important constraints. Remove comments that restate what the code does.
+- **One source of truth.** Avoid duplicating logic or UI; extract shared behavior into helpers or components when used in more than one place.

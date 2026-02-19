@@ -15,14 +15,11 @@ const formatMonthKey = (date) => {
 export default function AmortizationSetupModal({ isOpen, onClose, transaction, onSaved }) {
   const [startMonth, setStartMonth] = useState('')
   const [months, setMonths] = useState(4)
-  const [monthlyAmount, setMonthlyAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const amount = transaction?.amount != null ? parseFloat(transaction.amount) : 0
-  const txDate = transaction?.transaction_date ? new Date(transaction.transaction_date) : new Date()
 
-  // Flexible start-month options: 24 months back to 36 months ahead from today (not tied to expense date)
   const monthOptions = []
   const today = new Date()
   const rangeStart = new Date(today.getFullYear(), today.getMonth() - 24, 1)
@@ -31,7 +28,6 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     monthOptions.push({ key: formatMonthKey(d), label: formatMonthOption(d) })
   }
 
-  // Init once when modal opens: default start month = expense month, default months = 1 (user chooses).
   const initRef = useRef(false)
   useEffect(() => {
     if (!isOpen || !transaction) {
@@ -41,29 +37,18 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     if (initRef.current) return
     initRef.current = true
     const expenseMonthKey = formatMonthKey(transaction.transaction_date ? new Date(transaction.transaction_date) : new Date())
-    const amt = transaction.amount != null ? parseFloat(transaction.amount) : 0
     setStartMonth(monthOptions.some((o) => o.key === expenseMonthKey) ? expenseMonthKey : monthOptions[0]?.key ?? expenseMonthKey)
     setMonths(1)
     setError('')
-    const amounts = calculateMonthlyAmounts(amt, 1)
-    setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
-  }, [isOpen]) // intentionally omit transaction so we never re-run and overwrite user input
+  }, [isOpen])
 
-  // Recompute monthly amount when months change (user editing)
-  useEffect(() => {
-    if (months < 1 || amount <= 0) return
-    const amounts = calculateMonthlyAmounts(amount, months)
-    setMonthlyAmount(amounts[0]?.toFixed(2) ?? '')
-  }, [amount, months])
-
-  const monthlyNum = parseFloat(monthlyAmount) || 0
-  const totalFromInput = monthlyNum * months
-  const isValid = amount > 0 && months >= 1 && months <= 60 && Math.abs(totalFromInput - amount) < 0.02
+  const amounts = months >= 1 && amount > 0 ? calculateMonthlyAmounts(amount, months) : []
+  const firstMonthAmount = amounts[0] ?? 0
+  const isValid = amount > 0 && months >= 1 && months <= 60
 
   const previewMonths = []
-  if (startMonth && months >= 1) {
+  if (startMonth && months >= 1 && amounts.length) {
     const [y, m] = startMonth.split('-').map(Number)
-    const amounts = calculateMonthlyAmounts(amount, months)
     for (let i = 0; i < months; i++) {
       const d = new Date(y, m - 1 + i, 1)
       previewMonths.push({ label: formatMonthOption(d), amount: amounts[i] })
@@ -77,8 +62,6 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
     try {
       const { supabase } = await import('../lib/supabase')
       const startDate = startMonth + '-01'
-      const amounts = calculateMonthlyAmounts(amount, months)
-      const firstMonthAmount = amounts[0]
 
       const { error: updateError } = await supabase
         .from('expenses')
@@ -145,21 +128,9 @@ export default function AmortizationSetupModal({ isOpen, onClose, transaction, o
               onChange={(e) => setMonths(Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Monthly amount (editable)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={monthlyAmount}
-              onChange={(e) => setMonthlyAmount(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal focus:border-transparent"
-            />
-            {!isValid && monthlyAmount && (
-              <p className="text-xs text-amber-600 mt-1">
-                Monthly × {months} should equal ₪{amount.toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+            {amounts.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Monthly: ₪{firstMonthAmount.toLocaleString('he-IL', { minimumFractionDigits: 2 })} (auto-calculated)
               </p>
             )}
           </div>
