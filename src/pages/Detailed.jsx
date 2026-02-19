@@ -573,11 +573,11 @@ const Detailed = () => {
   const renderChart = () => {
     if (aggregatedData.length === 0) {
       return (
-        <div className="h-96 flex items-center justify-center text-gray-500">
+        <div className="h-80 flex items-center justify-center">
           <div className="text-center">
-            <PieChartIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-lg font-medium">No data to display</p>
-            <p className="text-sm">Try adjusting your filters</p>
+            <PieChartIcon className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-500">No data to display</p>
+            <p className="text-xs text-gray-400 mt-1">Try adjusting your filters</p>
           </div>
         </div>
       )
@@ -715,23 +715,23 @@ const Detailed = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-gray-600">Loading reports...</div>
+      <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
+        Loading reports…
       </div>
     )
   }
 
   if (!loading && categories.mains.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Detailed Reports</h1>
-          <p className="text-gray-600 mt-1">Advanced analytics and breakdowns</p>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Detailed Reports</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Advanced analytics and breakdowns</p>
         </div>
         <div className="card text-center py-12">
-          <Filter className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No categories yet</h3>
-          <p className="text-gray-600 mb-4">Add categories in the Categories page to see breakdowns and balance analysis here.</p>
+          <Filter className="w-10 h-10 text-gray-200 mx-auto mb-4" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">No categories yet</h3>
+          <p className="text-sm text-gray-500 mb-4">Add categories first to see breakdowns and balance analysis.</p>
           <Link to="/categories" className="btn-primary inline-flex items-center gap-2">
             Go to Categories
           </Link>
@@ -741,88 +741,74 @@ const Detailed = () => {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+    <div className="space-y-6">
       {/* Export success toast */}
       {exportToast && (
-        <div className="fixed top-4 right-4 z-50 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in">
-          <Download className="w-5 h-5" />
+        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 animate-slide-in border border-white/10">
+          <Download className="w-4 h-4 text-teal-400" />
           <span className="text-sm font-medium">Export downloaded</span>
         </div>
       )}
-      {/* Subtle refreshing indicator */}
       {isRefreshing && (
-        <div className="fixed top-4 right-4 bg-teal-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-fade-in">
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium">Updating...</span>
+        <div className="fixed top-4 right-4 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2.5 animate-fade-in border border-white/10">
+          <div className="w-3.5 h-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          <span className="text-sm font-medium">Updating…</span>
         </div>
       )}
-      
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Detailed Reports</h1>
-        <p className="text-gray-600 mt-1">Advanced analytics and breakdowns</p>
+
+      {/* Page header */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight">Detailed Reports</h1>
+        <p className="text-sm text-gray-400 mt-0.5">Advanced analytics and breakdowns</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
-          <span className="text-sm font-semibold text-gray-700">View:</span>
-          <div className="flex flex-wrap gap-4">
-            <div>
-              <button
-                onClick={() => setViewMode('breakdown')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 ${
-                  viewMode === 'breakdown'
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                📊 Category Breakdown
-              </button>
-              <p className="text-xs text-gray-500 mt-1">Spending by category, merchant, or month</p>
-            </div>
-            <div>
-              <button
-                onClick={() => setViewMode('balance')}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2 ${
-                  viewMode === 'balance'
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                💰 Balance Analysis
-              </button>
-              <p className="text-xs text-gray-500 mt-1">Income vs expenses and running balance</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-
-          <div className="flex items-center gap-3">
+      {/* Controls card */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+        {/* View mode toggle + date + filter row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 mb-5 border-b border-gray-100">
+          {/* Segmented control */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 self-start">
             <button
-              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
-              className={`flex items-center gap-2 px-4 py-2 border-2 rounded-lg transition-colors font-medium ${
-                hasActiveFilters
-                  ? 'border-teal-600 bg-teal-50 text-teal-700 shadow-sm'
-                  : 'border-gray-300 hover:bg-gray-50'
+              onClick={() => setViewMode('breakdown')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                viewMode === 'breakdown'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Filter className="w-4 h-4" />
-              <span className="text-sm">Filters</span>
+              <BarChart3 size={14} />
+              Breakdown
+            </button>
+            <button
+              onClick={() => setViewMode('balance')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                viewMode === 'balance'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <LineChartIcon size={14} />
+              Balance
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <button
+              onClick={() => setShowCategoryFilter(!showCategoryFilter)}
+              className={`btn-secondary flex items-center gap-1.5 ${hasActiveFilters ? 'border-teal-500 text-teal-700 bg-teal-50' : ''}`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filters
               {hasActiveFilters && (
-                <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-bold rounded-full min-w-[20px] text-center">
+                <span className="w-4 h-4 bg-teal-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
                   {activeFilterCount}
                 </span>
               )}
-              <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
             </button>
-
-            <button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <Download className="w-4 h-4" />
+            <button onClick={exportToCSV} className="btn-secondary flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5" />
               Export
             </button>
           </div>
@@ -941,77 +927,72 @@ const Detailed = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+            <label className="label">Min Amount</label>
             <input
               type="number"
               value={filters.minAmount}
               onChange={(e) => setFilters({ ...filters, minAmount: e.target.value })}
               placeholder="₪0"
-              className="w-full px-3 py-2 border rounded-lg"
+              className="input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+            <label className="label">Max Amount</label>
             <input
               type="number"
               value={filters.maxAmount}
               onChange={(e) => setFilters({ ...filters, maxAmount: e.target.value })}
               placeholder="₪1000"
-              className="w-full px-3 py-2 border rounded-lg"
+              className="input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Merchant Search</label>
+            <label className="label">Merchant</label>
             <input
               type="text"
               value={filters.merchant}
               onChange={(e) => setFilters({ ...filters, merchant: e.target.value })}
-              placeholder="Search merchant..."
-              className="w-full px-3 py-2 border rounded-lg"
+              placeholder="Search merchant…"
+              className="input"
             />
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-col gap-2 justify-end pb-0.5">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={filters.includeExceptional}
                 onChange={(e) => setFilters({ ...filters, includeExceptional: e.target.checked })}
-                className="w-4 h-4 text-teal border-gray-300 rounded"
+                className="w-3.5 h-3.5 text-teal-600 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700">Include exceptional</span>
+              <span className="text-sm text-gray-600">Include exceptional</span>
             </label>
-          </div>
-          <div className="flex items-end">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={filters.excludeUncategorized}
                 onChange={(e) => setFilters({ ...filters, excludeUncategorized: e.target.checked })}
-                className="w-4 h-4 text-teal border-gray-300 rounded"
+                className="w-3.5 h-3.5 text-teal-600 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700">Exclude uncategorized</span>
+              <span className="text-sm text-gray-600">Exclude uncategorized</span>
             </label>
           </div>
         </div>
 
         {/* Only show breakdown controls when in breakdown view */}
         {viewMode === 'breakdown' && (
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-200">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pt-4 border-t border-gray-100">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Group by:</span>
+              <span className="text-sm font-medium text-gray-500">Group by</span>
               <select
                 value={groupBy}
                 onChange={(e) => {
                   setGroupBy(e.target.value)
-                  // Reset secondary grouping if same as primary
-                  if (secondaryGroupBy === e.target.value) {
-                    setSecondaryGroupBy(null)
-                  }
+                  if (secondaryGroupBy === e.target.value) setSecondaryGroupBy(null)
                 }}
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium"
+                className="input w-auto py-1.5"
               >
                 <option value="main_category">Main Category</option>
                 <option value="sub_category">Sub Category</option>
@@ -1020,13 +1001,12 @@ const Detailed = () => {
               </select>
             </div>
 
-            {/* Secondary Grouping */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">then by:</span>
+              <span className="text-sm text-gray-400">then by</span>
               <select
                 value={secondaryGroupBy || ''}
                 onChange={(e) => setSecondaryGroupBy(e.target.value || null)}
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium"
+                className="input w-auto py-1.5"
               >
                 <option value="">None</option>
                 <option value="main_category" disabled={groupBy === 'main_category'}>Main Category</option>
@@ -1086,42 +1066,38 @@ const Detailed = () => {
       {viewMode === 'breakdown' ? (
         // EXISTING BREAKDOWN VIEW
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-1">Total Spending</div>
-          <div className="text-3xl font-bold text-gray-900">{formatAmount(totalSpending)}</div>
-          <div className="text-sm text-gray-500 mt-1">
-            {formatDateRangeDisplay(dateRange.from, dateRange.to)}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Spending</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1 leading-none">{formatAmount(totalSpending)}</p>
+              <p className="text-xs text-gray-400 mt-1">{formatDateRangeDisplay(dateRange.from, dateRange.to)}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Transactions</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1 leading-none">{expensesForBreakdown.length}</p>
+              <p className="text-xs text-gray-400 mt-1">{aggregatedData.length} unique {groupBy.replace('_', ' ')}s</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Avg per Transaction</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1 leading-none">{formatAmount(averageExpense)}</p>
+              <p className="text-xs text-gray-400 mt-1">across all expenses</p>
+            </div>
           </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-1">Expense Transactions</div>
-          <div className="text-3xl font-bold text-gray-900">{expensesForBreakdown.length}</div>
-          <div className="text-sm text-gray-500 mt-1">
-            {aggregatedData.length} unique {groupBy.replace('_', ' ')}s
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="text-sm text-gray-600 mb-1">Average Expense</div>
-          <div className="text-3xl font-bold text-gray-900">{formatAmount(averageExpense)}</div>
-          <div className="text-sm text-gray-500 mt-1">per transaction</div>
-        </div>
-      </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-5" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">
           Spending by {groupBy.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
         </h2>
         {renderChart()}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">
             Detailed Breakdown
             {secondaryGroupBy && (
-              <span className="text-sm font-normal text-gray-600 ml-2">
-                (Grouped by {groupBy.replace('_', ' ')} → {secondaryGroupBy.replace('_', ' ')})
+              <span className="text-xs font-normal text-gray-400 ml-2">
+                ({groupBy.replace('_', ' ')} → {secondaryGroupBy.replace('_', ' ')})
               </span>
             )}
           </h2>
@@ -1219,54 +1195,48 @@ const Detailed = () => {
         // NEW BALANCE ANALYSIS VIEW
         <div>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-xl p-6 border-2 border-green-300 shadow-sm">
-              <p className="text-sm font-semibold text-green-700 mb-1">Total Income</p>
-              <p className="text-2xl font-bold text-green-900">
-                {formatAmount(balanceSummary.totalIncome)}
-              </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-5 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-xl" aria-hidden="true" />
+              <div className="pl-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Income</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1 leading-none">{formatAmount(balanceSummary.totalIncome)}</p>
+              </div>
             </div>
-            
-            <div className="bg-white rounded-xl p-6 border-2 border-red-300 shadow-sm">
-              <p className="text-sm font-semibold text-red-700 mb-1">Total Expenses</p>
-              <p className="text-2xl font-bold text-red-900">
-                {formatAmount(balanceSummary.totalExpenses)}
-              </p>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-xl" aria-hidden="true" />
+              <div className="pl-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Total Expenses</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1 leading-none">{formatAmount(balanceSummary.totalExpenses)}</p>
+              </div>
             </div>
-            
-            <div className={`rounded-xl p-6 border-2 shadow-sm ${
-              balanceSummary.totalBalance >= 0
-                ? 'bg-white border-blue-300'
-                : 'bg-white border-orange-300'
-            }`}>
-              <p className={`text-sm font-semibold mb-1 ${
-                balanceSummary.totalBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
-              }`}>
-                Net Balance
-              </p>
-              <p className={`text-2xl font-bold ${
-                balanceSummary.totalBalance >= 0 ? 'text-blue-900' : 'text-orange-900'
-              }`}>
-                {balanceSummary.totalBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.totalBalance))}
-              </p>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <div className={`absolute top-0 left-0 w-1 h-full rounded-l-xl ${balanceSummary.totalBalance >= 0 ? 'bg-teal-500' : 'bg-amber-400'}`} aria-hidden="true" />
+              <div className="pl-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Net Balance</p>
+                <p className={`text-2xl font-bold mt-1 leading-none ${balanceSummary.totalBalance >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
+                  {balanceSummary.totalBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.totalBalance))}
+                </p>
+              </div>
             </div>
-            
-            <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
-              <p className="text-sm font-semibold text-gray-700 mb-1">Avg Monthly Balance</p>
-              <p className={`text-2xl font-bold ${
-                balanceSummary.avgMonthlyBalance >= 0 ? 'text-green-900' : 'text-orange-900'
-              }`}>
-                {balanceSummary.avgMonthlyBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.avgMonthlyBalance))}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                {balanceSummary.positiveMonths} of {monthlyBalanceData.length} months positive
-              </p>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-5 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+              <div className="absolute top-0 left-0 w-1 h-full bg-gray-300 rounded-l-xl" aria-hidden="true" />
+              <div className="pl-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Avg Monthly</p>
+                <p className={`text-2xl font-bold mt-1 leading-none ${balanceSummary.avgMonthlyBalance >= 0 ? 'text-gray-900' : 'text-amber-600'}`}>
+                  {balanceSummary.avgMonthlyBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(balanceSummary.avgMonthlyBalance))}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{balanceSummary.positiveMonths}/{monthlyBalanceData.length} months positive</p>
+              </div>
             </div>
           </div>
           
           {/* Income vs Expenses Chart */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Income vs Expenses Over Time</h3>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">Income vs Expenses Over Time</h3>
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={monthlyBalanceData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -1311,9 +1281,9 @@ const Detailed = () => {
           </div>
           
           {/* Monthly Balance Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Monthly Balance Breakdown</h3>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+            <div className="px-5 py-3.5 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">Monthly Balance Breakdown</h3>
             </div>
             
             <div className="overflow-x-auto">
@@ -1383,8 +1353,10 @@ const Detailed = () => {
                             {month.runningBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(month.runningBalance))}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center text-2xl">
-                          {month.balance >= 0 ? '📈' : '📉'}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${month.balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+                            {month.balance >= 0 ? '↑' : '↓'}
+                          </span>
                         </td>
                       </tr>
                     ))
