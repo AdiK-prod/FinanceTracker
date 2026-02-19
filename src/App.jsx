@@ -5,6 +5,7 @@ import Tagging from './pages/Tagging'
 import Dashboard from './pages/Dashboard'
 import Detailed from './pages/Detailed'
 import CategoryManagement from './pages/CategoryManagement'
+import Temp from './pages/Temp'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/tagging" element={<Tagging />} />
           <Route path="/detailed" element={<Detailed />} />
           <Route path="/categories" element={<CategoryManagement />} />
+          <Route path="/temp" element={<Temp />} />
         </Route>
       </Routes>
     </Router>
