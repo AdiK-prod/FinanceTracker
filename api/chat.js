@@ -156,7 +156,9 @@ USER CONTEXT:
 
 Remember: The user is viewing their data while chatting with you.
 Be helpful, specific, and conversational. Ask questions when needed.
-Learn from their feedback to give better recommendations.`
+Learn from their feedback to give better recommendations.
+
+DATA YOU RECEIVE: Full 24-month data from the DB with all parameters per transaction: category, sub_category, amortization (is_amortized, months, start_date, monthly_amount, status, excluded_from_totals), notes, is_exceptional, is_auto_tagged, upload_id. You get "EXPENSES BY CATEGORY BY MONTH", "AMORTIZED TRANSACTIONS" (full breakdown), and a transaction sample with every parameter. Use these to answer questions about any month, category, or amortized spending.`
 
 function formatTransactionsForAI(transactions) {
   if (!transactions || transactions.length === 0) {
@@ -197,7 +199,34 @@ function formatTransactionsForAI(transactions) {
     })
     .join('\n')
 
-  // Category breakdown (expenses only)
+  // Expenses by category per month (so the model can answer "categories for June 2025")
+  const byMonthCategory = {}
+  expenses.forEach(t => {
+    if (!t.transaction_date) return
+    const d = new Date(t.transaction_date)
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const main = t.main_category || 'Uncategorized'
+    const sub = t.sub_category || ''
+    const cat = sub ? `${main} → ${sub}` : main
+    if (!byMonthCategory[ym]) byMonthCategory[ym] = {}
+    byMonthCategory[ym][cat] = (byMonthCategory[ym][cat] || 0) + (t.amount || 0)
+  })
+  const monthlyCategoryLines = Object.entries(byMonthCategory)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 24)
+    .map(([ym, cats]) => {
+      const [year, month] = ym.split('-')
+      const name = `${monthNames[parseInt(month) - 1]} ${year}`
+      const top = Object.entries(cats)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 15)
+        .map(([c, amt]) => `${c}: ${fmt(amt)}`)
+        .join('; ')
+      return `${name}: ${top || 'No expenses'}`
+    })
+    .join('\n')
+
+  // Category breakdown (expenses only) – overall totals
   const categoryMap = {}
   expenses.forEach(t => {
     const main = t.main_category || 'Uncategorized'
@@ -216,14 +245,49 @@ function formatTransactionsForAI(transactions) {
     })
     .join('\n')
 
-  // Recent 50 transactions
+  // Amortized transactions (full parameters: spread across months, excluded from direct totals when applicable)
+  const amortized = transactions.filter(t => t.is_amortized === true)
+  const amortizedLines = amortized.length === 0
+    ? 'None'
+    : amortized.map(t => {
+        const parts = [
+          `Merchant: ${t.merchant || 'Unknown'}`,
+          `Amount: ${fmt(t.amount || 0)}`,
+          `Category: ${[t.main_category, t.sub_category].filter(Boolean).join(' → ') || 'Uncategorized'}`,
+          `Start: ${t.amortization_start_date || '?'}`,
+          `Months: ${t.amortization_months ?? '?'}`,
+          `Monthly: ${t.amortization_monthly_amount != null ? fmt(t.amortization_monthly_amount) : '?'}`,
+          `Status: ${t.amortization_status ?? 'active'}`,
+          `Excluded from totals: ${t.excluded_from_totals === true ? 'Yes' : 'No'}`
+        ]
+        if (t.amortization_adjusted_months != null) parts.push(`Adjusted months: ${t.amortization_adjusted_months}`)
+        if (t.notes) parts.push(`Notes: ${String(t.notes).slice(0, 80)}`)
+        return parts.join(' | ')
+      }).join('\n')
+
+  // Recent transactions with full parameters (date, merchant, amount, category, type, notes, flags, amortization)
   const recent = [...transactions]
     .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
-    .slice(0, 50)
+    .slice(0, 80)
     .map(t => {
       const cat = t.sub_category ? `${t.main_category || ''} → ${t.sub_category}` : (t.main_category || 'Uncategorized')
       const type = t.transaction_type === 'income' ? 'INCOME' : 'EXPENSE'
-      return `${t.transaction_date} | ${t.merchant || 'Unknown'} | ${fmt(t.amount || 0)} | ${cat} | ${type}`
+      const parts = [
+        t.transaction_date,
+        (t.merchant || 'Unknown').slice(0, 35),
+        fmt(t.amount || 0),
+        cat,
+        type
+      ]
+      if (t.is_exceptional) parts.push('EXCEPTIONAL')
+      if (t.is_auto_tagged) parts.push('auto-tagged')
+      if (t.notes) parts.push(`notes: ${String(t.notes).slice(0, 50)}`)
+      if (t.is_amortized) {
+        parts.push(`amortized: ${t.amortization_months ?? '?'}mo from ${t.amortization_start_date || '?'}, ${t.amortization_monthly_amount != null ? fmt(t.amortization_monthly_amount) + '/mo' : '?'}`)
+        if (t.excluded_from_totals) parts.push('excluded_from_totals')
+      }
+      if (t.upload_id) parts.push(`upload: ${t.upload_id}`)
+      return parts.join(' | ')
     })
     .join('\n')
 
@@ -235,11 +299,23 @@ Net Balance: ${fmt(balance)}
 MONTHLY BREAKDOWN:
 ${monthlyBreakdown}
 
-EXPENSES BY CATEGORY (Top 20):
+EXPENSES BY CATEGORY BY MONTH (use this for "spending in [Month Year]" or "categories for June 2025"):
+${monthlyCategoryLines}
+
+EXPENSES BY CATEGORY – OVERALL (Top 20):
 ${topCategories}
 
-RECENT TRANSACTIONS (Last 50):
-${recent}`
+AMORTIZED TRANSACTIONS (spread across months; full parameters per row):
+${amortizedLines}
+
+TRANSACTIONS SAMPLE (80 rows with full parameters: category, sub_category, notes, is_exceptional, is_auto_tagged, amortization, upload_id):
+${recent}
+
+DATA GLOSSARY (every parameter on each transaction row):
+- transaction_date, merchant, amount, main_category, sub_category, transaction_type (income/expense)
+- notes: free text; is_exceptional: marked by user as one-off; is_auto_tagged: category was auto-suggested
+- is_amortized: when true, amount is spread across months; amortization_months, amortization_start_date, amortization_monthly_amount, amortization_status (active/adjusted/cancelled); excluded_from_totals: parent row excluded from direct totals
+- upload_id: source upload file name, or null for manual entries`
 }
 
 export default async function handler(req, res) {
@@ -282,7 +358,7 @@ export default async function handler(req, res) {
     while (hasMore) {
       const { data, error } = await supabase
         .from('expenses')
-        .select('transaction_date, merchant, amount, main_category, sub_category, transaction_type')
+        .select('*')
         .eq('user_id', userId)
         .gte('transaction_date', dateFrom)
         .order('transaction_date', { ascending: false })

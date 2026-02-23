@@ -4,7 +4,7 @@
  */
 function formatTransactionsForAI(transactions) {
   if (!transactions || transactions.length === 0) {
-    return 'No transactions in the last 6 months.';
+    return 'No transactions in the last 24 months.';
   }
 
   const income = transactions.filter((t) => t.transaction_type === 'income');
@@ -15,7 +15,7 @@ function formatTransactionsForAI(transactions) {
 
   const fmt = (n) => `₪${Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2 })}`;
 
-  // Monthly breakdown (last 6 months, most recent first)
+  // Monthly breakdown (last 24 months)
   const byMonth = {};
   transactions.forEach((t) => {
     const d = (t.transaction_date || '').toString().slice(0, 7);
@@ -34,7 +34,31 @@ function formatTransactionsForAI(transactions) {
     })
     .join('\n');
 
-  // Top categories (expenses only): "Main → Sub: total (avg/month)"
+  // Expenses by category per month
+  const byMonthCategory = {};
+  expenses.forEach((t) => {
+    const ym = (t.transaction_date || '').toString().slice(0, 7);
+    if (!ym) return;
+    const cat = [t.main_category || 'Uncategorized', t.sub_category].filter(Boolean).join(' → ');
+    if (!byMonthCategory[ym]) byMonthCategory[ym] = {};
+    byMonthCategory[ym][cat] = (byMonthCategory[ym][cat] || 0) + (t.amount || 0);
+  });
+  const monthlyCategoryLines = Object.entries(byMonthCategory)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 24)
+    .map(([ym, cats]) => {
+      const [y, m] = ym.split('-');
+      const monthName = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleString('en-GB', { month: 'long', year: 'numeric' });
+      const top = Object.entries(cats)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 15)
+        .map(([c, amt]) => `${c}: ${fmt(amt)}`)
+        .join('; ');
+      return `${monthName}: ${top || 'No expenses'}`;
+    })
+    .join('\n');
+
+  // Top categories (expenses only): overall
   const categorySums = {};
   expenses.forEach((t) => {
     const cat = [t.main_category || 'Uncategorized', t.sub_category].filter(Boolean).join(' → ');
@@ -49,12 +73,47 @@ function formatTransactionsForAI(transactions) {
     })
     .join('\n');
 
-  // Recent 50 transactions
+  // Amortized transactions (full parameters)
+  const amortized = transactions.filter((t) => t.is_amortized === true);
+  const amortizedLines = amortized.length === 0
+    ? 'None'
+    : amortized.map((t) => {
+        const parts = [
+          `Merchant: ${t.merchant || 'Unknown'}`,
+          `Amount: ${fmt(t.amount || 0)}`,
+          `Category: ${[t.main_category, t.sub_category].filter(Boolean).join(' → ') || 'Uncategorized'}`,
+          `Start: ${t.amortization_start_date || '?'}`,
+          `Months: ${t.amortization_months ?? '?'}`,
+          `Monthly: ${t.amortization_monthly_amount != null ? fmt(t.amortization_monthly_amount) : '?'}`,
+          `Status: ${t.amortization_status ?? 'active'}`,
+          `Excluded from totals: ${t.excluded_from_totals === true ? 'Yes' : 'No'}`
+        ];
+        if (t.amortization_adjusted_months != null) parts.push(`Adjusted months: ${t.amortization_adjusted_months}`);
+        if (t.notes) parts.push(`Notes: ${String(t.notes).slice(0, 80)}`);
+        return parts.join(' | ');
+      }).join('\n');
+
+  // Recent transactions with full parameters
   const sorted = [...transactions].sort((a, b) => (b.transaction_date || '').localeCompare(a.transaction_date || ''));
-  const recent = sorted.slice(0, 50).map((t) => {
+  const recent = sorted.slice(0, 80).map((t) => {
     const cat = [t.main_category, t.sub_category].filter(Boolean).join(' → ') || 'Uncategorized';
     const type = t.transaction_type === 'income' ? 'INCOME' : 'EXPENSE';
-    return `${t.transaction_date || '?'} | ${(t.merchant || 'Unknown').slice(0, 40)} | ${fmt(t.amount)} | ${cat} | ${type}`;
+    const parts = [
+      t.transaction_date || '?',
+      (t.merchant || 'Unknown').slice(0, 35),
+      fmt(t.amount || 0),
+      cat,
+      type
+    ];
+    if (t.is_exceptional) parts.push('EXCEPTIONAL');
+    if (t.is_auto_tagged) parts.push('auto-tagged');
+    if (t.notes) parts.push(`notes: ${String(t.notes).slice(0, 50)}`);
+    if (t.is_amortized) {
+      parts.push(`amortized: ${t.amortization_months ?? '?'}mo from ${t.amortization_start_date || '?'}, ${t.amortization_monthly_amount != null ? fmt(t.amortization_monthly_amount) + '/mo' : '?'}`);
+      if (t.excluded_from_totals) parts.push('excluded_from_totals');
+    }
+    if (t.upload_id) parts.push(`upload: ${t.upload_id}`);
+    return parts.join(' | ');
   }).join('\n');
 
   return `
@@ -66,11 +125,19 @@ Net Balance: ${fmt(balance)}
 MONTHLY BREAKDOWN:
 ${monthlyText || 'No data'}
 
-EXPENSES BY CATEGORY:
+EXPENSES BY CATEGORY BY MONTH (use for "spending in [Month Year]" or "categories for June 2025"):
+${monthlyCategoryLines || 'No data'}
+
+EXPENSES BY CATEGORY – OVERALL:
 ${topCategories || 'No categories'}
 
-RECENT TRANSACTIONS (Last 50):
+AMORTIZED TRANSACTIONS (full parameters per row):
+${amortizedLines}
+
+TRANSACTIONS SAMPLE (80 rows with full parameters: category, sub_category, notes, is_exceptional, is_auto_tagged, amortization, upload_id):
 ${recent || 'None'}
+
+DATA GLOSSARY: transaction_date, merchant, amount, main_category, sub_category, transaction_type; notes; is_exceptional, is_auto_tagged; is_amortized, amortization_months, amortization_start_date, amortization_monthly_amount, amortization_status, excluded_from_totals; upload_id.
 `.trim();
 }
 
