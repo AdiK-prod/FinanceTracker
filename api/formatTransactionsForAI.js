@@ -24,7 +24,7 @@ function formatTransactionsForAI(transactions) {
     if (t.transaction_type === 'income') byMonth[d].income += t.amount || 0;
     else byMonth[d].expenses += t.amount || 0;
   });
-  const months = Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+  const months = Object.entries(byMonth).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 24);
 
   let monthlyText = months
     .map(([ym, v]) => {
@@ -58,7 +58,7 @@ function formatTransactionsForAI(transactions) {
   }).join('\n');
 
   return `
-FINANCIAL SUMMARY (Last 6 months)
+FINANCIAL SUMMARY (Last 24 months)
 Total Income: ${fmt(totalIncome)}
 Total Expenses: ${fmt(totalExpenses)}
 Net Balance: ${fmt(balance)}

@@ -13,7 +13,7 @@ async function fetchUserTransactions(accessToken, userId) {
 
   const toDate = new Date();
   const fromDate = new Date();
-  fromDate.setMonth(fromDate.getMonth() - 6);
+  fromDate.setMonth(fromDate.getMonth() - 24); // 24 months so full prior year + current year
   const from = fromDate.toISOString().slice(0, 10);
   const to = toDate.toISOString().slice(0, 10);
 
