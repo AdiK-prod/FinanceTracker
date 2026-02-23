@@ -200,45 +200,47 @@ Check browser console (F12) for full details.
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Success Toast */}
       {successToast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-start gap-3 animate-slide-in">
-          <Receipt className="w-6 h-6 flex-shrink-0 mt-0.5" />
+        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-start gap-3 animate-slide-in border border-white/10">
+          <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
+            <Receipt className="w-3.5 h-3.5 text-white" />
+          </div>
           <div>
-            <p className="font-semibold">
-              {successToast.total} transaction{successToast.total !== 1 ? 's' : ''} added successfully!
+            <p className="font-semibold text-sm">
+              {successToast.total} transaction{successToast.total !== 1 ? 's' : ''} added
             </p>
-            <p className="text-sm text-green-100 mt-1">
+            <p className="text-xs text-gray-400 mt-0.5">
               {successToast.expense > 0 && `${successToast.expense} expense${successToast.expense !== 1 ? 's' : ''}`}
-              {successToast.income > 0 && successToast.expense > 0 && ' • '}
+              {successToast.income > 0 && successToast.expense > 0 && ' · '}
               {successToast.income > 0 && `${successToast.income} income`}
             </p>
           </div>
           <button
             onClick={() => setSuccessToast(null)}
-            className="ml-4 text-white hover:text-green-100"
+            className="ml-2 text-gray-500 hover:text-white transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
-      
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Overview of your household spending</p>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Household spending overview</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors text-sm font-medium text-gray-600">
+          <label className="flex items-center gap-1.5 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors text-sm font-medium text-gray-600 select-none">
             <input
               type="checkbox"
               checked={includeExceptional}
               onChange={(e) => setIncludeExceptional(e.target.checked)}
               className="w-3.5 h-3.5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
             />
-            <Star className="w-3.5 h-3.5 text-amber-500" />
+            <Star className="w-3.5 h-3.5 text-amber-400" />
             <span className="whitespace-nowrap">Exceptional</span>
           </label>
           <DateRangePicker
@@ -252,26 +254,26 @@ Check browser console (F12) for full details.
               className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors"
               title="Run diagnostic"
             >
-              <Search size={15} />
+              <Search size={14} />
               Diagnose
             </button>
           )}
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="btn-primary flex items-center gap-1.5 text-sm"
+            className="btn-primary flex items-center gap-1.5"
           >
-            <Upload size={16} />
+            <Upload size={14} />
             Upload
           </button>
         </div>
       </div>
 
       {!includeExceptional && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-3">
           <Star className="w-4 h-4 text-amber-500 shrink-0" />
           <p className="text-sm text-amber-800">
             <span className="font-semibold">Exceptional transactions excluded.</span>{' '}
-            Toggle "Exceptional" above to include one-time transactions.
+            Toggle above to include one-time transactions.
           </p>
         </div>
       )}
@@ -279,51 +281,60 @@ Check browser console (F12) for full details.
       {/* Summary Cards */}
       {isLoading ? (
         <div className="animate-pulse grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="h-28 bg-gray-200 rounded-xl" />
-          <div className="h-28 bg-gray-200 rounded-xl" />
-          <div className="h-28 bg-gray-200 rounded-xl" />
+          <div className="h-24 bg-gray-200 rounded-xl" />
+          <div className="h-24 bg-gray-200 rounded-xl" />
+          <div className="h-24 bg-gray-200 rounded-xl" />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Income */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-            <div className="p-3 bg-emerald-50 rounded-xl shrink-0">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Income</p>
-              <p className="text-xl font-bold text-gray-900 mt-0.5 truncate">{formatAmount(incomeTotal)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{incomeCount} transaction{incomeCount !== 1 ? 's' : ''}</p>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-xl" aria-hidden="true" />
+            <div className="pl-2 flex items-center gap-4 min-w-0 w-full">
+              <div className="p-2.5 bg-emerald-50 rounded-lg shrink-0">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Income</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5 truncate leading-none">{formatAmount(incomeTotal)}</p>
+                <p className="text-xs text-gray-400 mt-1">{incomeCount} transaction{incomeCount !== 1 ? 's' : ''}</p>
+              </div>
             </div>
           </div>
 
           {/* Expenses */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl shrink-0">
-              <TrendingDown className="w-5 h-5 text-red-500" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Expenses</p>
-              <p className="text-xl font-bold text-gray-900 mt-0.5 truncate">{formatAmount(expenseTotal)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{expenseCount} transaction{expenseCount !== 1 ? 's' : ''}</p>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+            <div className="absolute top-0 left-0 w-1 h-full bg-red-400 rounded-l-xl" aria-hidden="true" />
+            <div className="pl-2 flex items-center gap-4 min-w-0 w-full">
+              <div className="p-2.5 bg-red-50 rounded-lg shrink-0">
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Expenses</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5 truncate leading-none">{formatAmount(expenseTotal)}</p>
+                <p className="text-xs text-gray-400 mt-1">{expenseCount} transaction{expenseCount !== 1 ? 's' : ''}</p>
+              </div>
             </div>
           </div>
 
           {/* Net Balance */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-            <div className={`p-3 rounded-xl shrink-0 ${netBalance >= 0 ? 'bg-teal-50' : 'bg-amber-50'}`}>
-              <ArrowUpRight className={`w-5 h-5 ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-500 rotate-90'}`} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Net Balance</p>
-              <p className={`text-xl font-bold mt-0.5 truncate ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
-                {netBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(netBalance))}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {netBalance >= 0
-                  ? `${((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% saved`
-                  : `${Math.abs((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% overspent`}
-              </p>
+          <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4 relative overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+            <div className={`absolute top-0 left-0 w-1 h-full rounded-l-xl ${netBalance >= 0 ? 'bg-teal-500' : 'bg-amber-400'}`} aria-hidden="true" />
+            <div className="pl-2 flex items-center gap-4 min-w-0 w-full">
+              <div className={`p-2.5 rounded-lg shrink-0 ${netBalance >= 0 ? 'bg-teal-50' : 'bg-amber-50'}`}>
+                <ArrowUpRight className={`w-4 h-4 ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-500 rotate-90'}`} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Net Balance</p>
+                <p className={`text-2xl font-bold mt-0.5 truncate leading-none ${netBalance >= 0 ? 'text-teal-600' : 'text-amber-600'}`}>
+                  {netBalance >= 0 ? '+' : ''}{formatAmount(Math.abs(netBalance))}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {netBalance >= 0
+                    ? `${((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% saved`
+                    : `${Math.abs((netBalance / (incomeTotal || 1)) * 100).toFixed(1)}% overspent`}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -331,12 +342,12 @@ Check browser console (F12) for full details.
 
       {/* Empty State */}
       {!isLoading && expenses.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm text-center py-14 px-6">
-          <Wallet className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+        <div className="bg-white rounded-xl border border-gray-200 text-center py-14 px-6" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+          <Wallet className="w-10 h-10 text-gray-200 mx-auto mb-4" />
           <h3 className="text-base font-semibold text-gray-900 mb-1">No transactions found</h3>
           <p className="text-sm text-gray-500 mb-5">Upload a CSV file to populate your dashboard.</p>
-          <button onClick={() => setIsUploadOpen(true)} className="btn-primary inline-flex items-center gap-2 text-sm">
-            <Upload size={16} />
+          <button onClick={() => setIsUploadOpen(true)} className="btn-primary inline-flex items-center gap-2">
+            <Upload size={14} />
             Upload File
           </button>
         </div>
@@ -345,16 +356,17 @@ Check browser console (F12) for full details.
       {/* Category pills */}
       {expenses.length > 0 && categoryData.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Expense Breakdown</h2>
+          <p className="section-heading">Expense Breakdown</p>
           <div className="flex flex-wrap gap-2">
             {categoryData.map((item) => (
               <button
                 key={item.name}
                 onClick={() => handleCategoryPillClick(item.name)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-white border border-gray-200 text-gray-700 hover:border-teal-400 hover:text-teal-700"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-white border border-gray-200 text-gray-600 hover:border-teal-300 hover:text-teal-700 hover:bg-teal-50/50"
+                style={{boxShadow:'0 1px 2px 0 rgb(0 0 0/0.04)'}}
               >
                 {item.name}
-                <span className="ml-1.5 text-teal-600 font-semibold">{formatAmount(item.value)}</span>
+                <span className="ml-1.5 text-teal-600 font-bold">{formatAmount(item.value)}</span>
               </button>
             ))}
           </div>
@@ -365,7 +377,7 @@ Check browser console (F12) for full details.
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie Chart */}
         {isLoading ? (
-          <div className="card animate-pulse h-[420px]" />
+          <div className="card animate-pulse h-[400px]" />
         ) : categoryData.length > 0 ? (
           <PieChartComponent
             data={categoryData}
@@ -373,96 +385,76 @@ Check browser console (F12) for full details.
             onCategoryClick={handleCategoryClick}
           />
         ) : (
-          <div className="card">
-            <p className="text-sm text-gray-600">No expenses found for this range.</p>
+          <div className="card flex items-center justify-center h-32">
+            <p className="text-sm text-gray-400">No expenses for this range</p>
           </div>
         )}
 
         {/* Recent Transactions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{boxShadow:'0 1px 3px 0 rgb(0 0 0/0.06)'}}>
+          <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Latest Activity</h2>
             <button
               onClick={() => navigate('/tagging')}
-              className="text-xs text-teal-600 hover:text-teal-700 font-semibold flex items-center gap-1"
+              className="text-xs text-teal-600 hover:text-teal-700 font-semibold flex items-center gap-1 transition-colors"
             >
-              View all <ArrowUpRight className="w-3.5 h-3.5" />
+              View all <ArrowUpRight className="w-3 h-3" />
             </button>
           </div>
-          
-          <div className="divide-y divide-gray-100">
+
+          <div className="divide-y divide-gray-50">
             {isLoading ? (
-              <div className="px-6 py-12 text-center">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                </div>
+              <div className="px-5 py-10 text-center animate-pulse">
+                <div className="h-3 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
               </div>
             ) : sortedTransactions.length === 0 ? (
-              <div className="px-6 py-12 text-center text-gray-500">
-                <Receipt className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                <p>No transactions yet</p>
+              <div className="px-5 py-12 text-center">
+                <Receipt className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No transactions yet</p>
               </div>
             ) : (
               sortedTransactions.slice(0, 10).map((expense) => (
                 <div
                   key={expense.id}
-                  className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="px-5 py-3 hover:bg-gray-50/70 transition-colors cursor-pointer"
                   onClick={() => navigate('/tagging')}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      {/* Merchant Name with Income Badge */}
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900 truncate" dir="rtl">
                           {expense.merchant}
                         </span>
-                        
-                        {/* Income Badge */}
                         {expense.transaction_type === 'income' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                            💰 INCOME
+                          <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded uppercase tracking-wide shrink-0">
+                            Income
                           </span>
                         )}
                       </div>
-                      
-                      {/* Date and Category */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-gray-400">
                           {formatDateDisplay(expense.transaction_date)}
                         </span>
-                        
                         {expense.main_category && (
                           <>
-                            <span className="text-gray-300">•</span>
-                            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
-                              {expense.main_category}
-                            </span>
+                            <span className="text-gray-300 text-xs">·</span>
+                            <span className="text-xs text-gray-500">{expense.main_category}</span>
                           </>
-                        )}
-                        
-                        {expense.sub_category && (
-                          <span className="text-xs text-gray-500">
-                            {expense.sub_category}
-                          </span>
                         )}
                       </div>
                     </div>
-                    
-                    {/* Amount */}
-                    <div className="ml-4 flex-shrink-0 text-right">
-                      <div className={`text-sm font-semibold ${
-                        expense.transaction_type === 'income' ? 'text-green-600' : 'text-gray-900'
+                    <div className="shrink-0 text-right">
+                      <div className={`text-sm font-semibold tabular-nums ${
+                        expense.transaction_type === 'income' ? 'text-emerald-600' : 'text-gray-900'
                       }`}>
-                        {expense.transaction_type === 'income' ? '+' : ''}₪{expense.amount.toLocaleString('he-IL', { 
+                        {expense.transaction_type === 'income' ? '+' : ''}₪{expense.amount.toLocaleString('he-IL', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2
                         })}
                       </div>
-                      
-                      {/* Exceptional badge */}
                       {expense.is_exceptional && (
-                        <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">
+                        <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded font-medium">
                           Exceptional
                         </span>
                       )}
