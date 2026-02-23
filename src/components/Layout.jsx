@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Tag, PieChart, Filter, Tags, Menu, X, PanelLeftClose, PanelLeft } from 'lucide-react'
 import UserMenu from './UserMenu'
+import FloatingChatWidget from './FloatingChatWidget'
 
 const SIDEBAR_COLLAPSED_KEY = 'finance-tracker-sidebar-collapsed'
 
@@ -165,6 +166,8 @@ const Layout = () => {
           <Outlet />
         </div>
       </main>
+
+      <FloatingChatWidget />
     </div>
   )
 }
