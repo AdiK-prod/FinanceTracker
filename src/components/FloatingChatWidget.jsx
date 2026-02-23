@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, ChevronDown } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import { MessageCircle, X, Send } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -27,6 +28,15 @@ const TypingIndicator = () => (
   </div>
 )
 
+const markdownClasses = `
+  [&_p]:mb-2 [&_p:last-child]:mb-0
+  [&_strong]:font-semibold [&_strong]:text-gray-900
+  [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:my-2
+  [&_li]:my-0.5
+  [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h1]:font-bold [&_h2]:font-bold [&_h3]:font-semibold [&_h1]:mt-2 [&_h2]:mt-2 [&_h3]:mt-1.5 [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-0.5
+  [&_code]:bg-gray-200 [&_code]:px-1 [&_code]:rounded [&_code]:text-xs
+`
+
 const Message = ({ msg }) => {
   const isUser = msg.role === 'user'
   return (
@@ -37,13 +47,13 @@ const Message = ({ msg }) => {
         </div>
       )}
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
+        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? 'bg-blue-600 text-white rounded-br-sm'
-            : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+            ? 'bg-blue-600 text-white rounded-br-sm whitespace-pre-wrap'
+            : `bg-gray-100 text-gray-800 rounded-bl-sm ${markdownClasses}`
         }`}
       >
-        {msg.content}
+        {isUser ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
       </div>
     </div>
   )
