@@ -160,7 +160,7 @@ Learn from their feedback to give better recommendations.`
 
 function formatTransactionsForAI(transactions) {
   if (!transactions || transactions.length === 0) {
-    return 'FINANCIAL SUMMARY\nNo transactions found for the last 6 months.'
+    return 'FINANCIAL SUMMARY\nNo transactions found for the last 24 months.'
   }
 
   const expenses = transactions.filter(t => t.transaction_type === 'expense')
@@ -188,7 +188,7 @@ function formatTransactionsForAI(transactions) {
 
   const monthlyBreakdown = Object.entries(monthlyMap)
     .sort(([a], [b]) => b.localeCompare(a))
-    .slice(0, 6)
+    .slice(0, 24)
     .map(([key, vals]) => {
       const [year, month] = key.split('-')
       const name = `${monthNames[parseInt(month) - 1]} ${year}`
@@ -210,7 +210,8 @@ function formatTransactionsForAI(transactions) {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 20)
     .map(([cat, total]) => {
-      const monthly = total / 6
+      const numMonths = Math.max(1, Object.keys(monthlyMap).length)
+      const monthly = total / numMonths
       return `${cat}: ${fmt(total)} (${fmt(monthly)}/month avg)`
     })
     .join('\n')
@@ -226,7 +227,7 @@ function formatTransactionsForAI(transactions) {
     })
     .join('\n')
 
-  return `FINANCIAL SUMMARY (Last 6 Months)
+  return `FINANCIAL SUMMARY (Last 24 Months)
 Total Income: ${fmt(totalIncome)}
 Total Expenses: ${fmt(totalExpenses)}
 Net Balance: ${fmt(balance)}
@@ -267,10 +268,10 @@ export default async function handler(req, res) {
       }
     })
 
-    // Fetch last 6 months of transactions
-    const sixMonthsAgo = new Date()
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const dateFrom = sixMonthsAgo.toISOString().split('T')[0]
+    // Fetch last 24 months of transactions (full prior year + current year)
+    const fromDate = new Date()
+    fromDate.setMonth(fromDate.getMonth() - 24)
+    const dateFrom = fromDate.toISOString().split('T')[0]
 
     // Paginate to get all rows
     let allTransactions = []

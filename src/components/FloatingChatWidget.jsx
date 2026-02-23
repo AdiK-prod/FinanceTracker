@@ -273,7 +273,7 @@ export default function FloatingChatWidget() {
             </button>
           </div>
           <p className="text-[10px] text-gray-400 mt-1.5 text-center">
-            Analyzes your last 6 months of transactions
+            Analyzes your last 24 months of transactions
           </p>
         </div>
       </div>

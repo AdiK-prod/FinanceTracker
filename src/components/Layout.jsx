@@ -178,7 +178,6 @@ const Layout = () => {
           <Outlet />
         </div>
       </main>
-
       <FloatingChatWidget />
     </div>
   )
